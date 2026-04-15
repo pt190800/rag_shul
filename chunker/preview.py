@@ -11,7 +11,7 @@ Usage:
 from pathlib import Path
 from .chunker import load_schema, build_dataframe
 
-SCHEMA_PATH = Path(__file__).parent.parent / "data" / "schema2.json"
+SCHEMA_PATH = Path(__file__).parent.parent / "data" / "shulchan_aruch_rag.json"
 
 
 def main():
