@@ -10,8 +10,8 @@ Input JSON structure:
       "siman_1": {
         "total_seifim": 9,
         "seifim": {
-          "1": "יתגבר כארי...",
-          "2": "לא יאמר אדם..."
+          "seif 1": "יתגבר כארי...",
+          "seif 2": "לא יאמר אדם..."
         }
       },
       ...
@@ -63,6 +63,4 @@ def build_dataframe(schema: dict) -> pd.DataFrame:
 
     df = pd.DataFrame(rows)
     return df.sort_values(["siman", "seif"]).reset_index(drop=True)
-
-
 
