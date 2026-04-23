@@ -1,4 +1,3 @@
-import os
 import sys
 from http.server import HTTPServer
 from pathlib import Path
