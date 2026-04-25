@@ -1,33 +1,33 @@
 # exp_config.yaml — RAG pipeline configuration (experiments)
 # ===========================================================
-# הגדרות הניסוי. נתיבים יחסיים לתיקיית experiments/.
+# Experiment settings. Paths are relative to the experiments/ directory.
 #
-# זרימת הפייפליין (exp_main.py):
-#   1. chunker.build_csv:        json_file  →  chunks_csv
-#   2. embed.build_embeddings:   chunks_csv →  embeddings_npy
-#   3. retriever (retrieval_npy): chunks_csv + embeddings_npy + query → תוצאות
-#   4. evaluator:                 retriever + csv_path → דוח
+# Pipeline flow (exp_main.py):
+#   1. chunker.build_csv:        json_file   →  chunks_csv
+#   2. embed.build_embeddings:   chunks_csv  →  embeddings_npy
+#   3. retriever (retrieval_npy): chunks_csv + embeddings_npy + query → results
+#   4. evaluator:                 retriever  + csv_path → report
 #
-# Skip logic (מבוצע ב-exp_main):
-#   • embeddings_npy קיים → מדלגים על שלבים 1 ו-2
-#   • chunks_csv קיים אך אין npy → מדלגים רק על שלב 1
-#   • שניהם חסרים → הרצה מלאה
-#   • --force-rebuild → מוחק ומריץ הכל מחדש
+# Skip logic (handled in exp_main):
+#   • embeddings_npy exists       → skip stages 1 and 2
+#   • chunks_csv exists, no npy   → skip stage 1 only
+#   • neither exists              → full run
+#   • --force-rebuild             → delete everything and rerun
 
-# מצב הרצה: full = נתונים מלאים | mini = נתוני בדיקה קטנים (smoke test)
-# ניתן להחליף גם בשורת הפקודה: --mode full / --mode mini
-run_mode: full        # full | mini
+# Run mode: full = real data | mini = small smoke-test data
+# Can also be overridden on the command line: --mode full / --mode mini
+run_mode: mini        # full | mini
 
 paths:
   full:
     json_file:       "../data/processed/shulchan_aruch_rag.json"
-    chunks_csv:      "chunks_v1.csv"                              # ← שונה
+    chunks_csv:      "chunks_v1.csv"                              # ← changed
     embeddings_npy:  "embeddings_v1.npy"
     csv_path:        "../data/eval/sa_eval.csv"
 
   mini:
     json_file:       "../data/processed/mini_shulchan_aruch_rag.json"
-    chunks_csv:      "mini_chunks_v1.csv"                         # ← שונה
+    chunks_csv:      "mini_chunks_v1.csv"                         # ← changed
     embeddings_npy:  "mini_embeddings_v1.npy"
     csv_path:        "../data/eval/mini_sa_eval.csv"
 
@@ -44,8 +44,8 @@ chunker:
 embeddings:
   model: "intfloat/multilingual-e5-large"
   batch_size: 32
-  prefix_passage: "passage: "   # נוסף ל-breadcrumb+text בזמן build_embeddings
-  prefix_query:   "query: "     # נוסף ל-query בזמן retriever.retrieve
+  prefix_passage: "passage: "   # prepended to breadcrumb+text during build_embeddings
+  prefix_query:   "query: "     # prepended to the query during retriever.retrieve
 
 retrieval:
   top_k:          3     # chunks returned to the user / LLM
@@ -53,17 +53,17 @@ retrieval:
   score_threshold: 0.85
 
 evaluation:
-  # סוג הערכה: 'retrieval' (Exists) או 'llm_qa' (future)
+  # Evaluator type: 'retrieval' (Exists) or 'llm_qa' (future)
   type: "retrieval"
 
-  # --- פרמטרים למעריך ה-retrieval ---
-  k_values:       [1, 3, 5, 10, 18, 30, 50]  # ערכי K לדוח Recall
-  target_k:       50                          # K להשוואה מול היעד
-  target_recall:  0.85                        # יעד Recall (0-1)
-  retrieve_k:     100                         # כמה תוצאות להחזיר (>= max(k_values))
-  max_questions:  null                        # null = כל השאלות; מספר = רק N הראשונות
+  # --- parameters for the retrieval evaluator ---
+  k_values:       [1, 3, 5, 10, 18, 30, 50]  # K values for the Recall report
+  target_k:       50                          # K to compare against the target
+  target_recall:  0.85                        # Recall target (0-1)
+  retrieve_k:     100                         # how many results to return (>= max(k_values))
+  max_questions:  null                        # null = all questions; integer = only the first N
 
-  # --- פרמטרים למעריך ה-llm_qa (future) ---
+  # --- parameters for the llm_qa evaluator (future) ---
   llm_model:           "gpt-4o"
-  top_k_context:       3     # chunks שנשלחים ל-LLM לצורך יצירת תשובה
+  top_k_context:       3     # chunks sent to the LLM for answer generation
   sleep_between_calls: 0.3

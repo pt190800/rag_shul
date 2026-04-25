@@ -1,20 +1,20 @@
 """
 exp_main.py — Pipeline Orchestrator
 ====================================
-אורכסטרטור טהור. לא מכיל לוגיקה של chunking / embedding / retrieval / metrics —
-רק קורא למודולים הייעודיים לפי הסדר, ומדלג על שלבים שכבר הופקו.
+Pure orchestrator. Contains no logic for chunking / embedding / retrieval / metrics —
+just calls the dedicated modules in order, skipping stages whose output already exists.
 
-פיצול אחריות:
+Responsibility split:
   • chunker.chunker.build_csv(...)        : JSON            → chunks CSV
   • embedder.embed.build_embeddings(...)  : chunks CSV      → embeddings NPY
-  • retrievers.get_retriever(...)         : CSV + NPY + שאילתה → תוצאות
-  • evaluation.get_evaluator(...)         : retriever + שאלות → מדדים
+  • retrievers.get_retriever(...)         : CSV + NPY + query → results
+  • evaluation.get_evaluator(...)         : retriever + questions → metrics
 
-Skip logic (מבוצע כאן, ב-exp_main):
-  • אם קיים embeddings_npy → מדלגים על chunker + embed
-  • אם קיים chunks_csv בלבד → מדלגים רק על chunker
-  • אחרת → מריצים את הפייפליין המלא
-  • --force-rebuild → מוחק ומריץ מחדש
+Skip logic (handled here, in exp_main):
+  • If embeddings_npy exists  → skip chunker + embed
+  • If only chunks_csv exists → skip the chunker stage only
+  • Otherwise                 → run the full pipeline
+  • --force-rebuild           → delete existing artifacts and rebuild
 
 Usage:
     python exp_main.py
@@ -56,8 +56,9 @@ eval_params = cfg["evaluation"]
 
 def resolve_paths(cfg: dict, mode: str) -> dict:
     """
-    בוחר את בלוק הנתיבים לפי run_mode.
-    תומך גם במבנה ה-flat הישן (paths: { json_file, csv_path }) לתאימות לאחור.
+    Pick the paths block matching run_mode.
+    Also supports the legacy flat structure (paths: { json_file, csv_path }) for
+    backwards compatibility.
     """
     paths_cfg = cfg.get("paths", {})
     mode = (mode or "full").lower()
@@ -76,11 +77,13 @@ def resolve_paths(cfg: dict, mode: str) -> dict:
 
 
 def load_queries(csv_path: Path) -> pd.DataFrame:
-    """טוען CSV שאלות ומנרמל שמות עמודות."""
+    """Load the questions CSV and normalize the column names."""
     df = pd.read_csv(csv_path)
     col_map = {}
     for col in df.columns:
         lc = col.strip().lower()
+        # Note: the Hebrew strings below are CSV header values to match in the
+        # user's input file — they are data, not comments, and must stay as-is.
         if lc in ("שאלה", "question", "query"):
             col_map[col] = "question"
         elif lc in ("סימן", "siman"):
@@ -128,18 +131,18 @@ def dump_first_query(
     ts_filename: str | None = None,
 ) -> Path:
     """
-    מריץ את ה-retriever על השאלה הראשונה ב-queries_df וכותב לקובץ JSON
-    את **הפלט הגולמי** של retriever.retrieve(...) — בדיוק כפי שהוחזר,
-    בלי עיצוב, בלי השוואה ל-ground truth, בלי שדות נגזרים.
+    Run the retriever on the first question in queries_df and write the
+    **raw output** of retriever.retrieve(...) to a JSON file — exactly as
+    returned, without formatting, ground-truth comparison, or derived fields.
 
-    מבנה הקובץ:
+    File structure:
         {
-          "query":   "<טקסט השאלה הראשונה>",
-          "top_k":   <המספר שהועבר ל-retrieve>,
-          "results": <list[dict] — מה ש-retriever.retrieve() החזיר>
+          "query":   "<text of the first question>",
+          "top_k":   <value passed to retrieve>,
+          "results": <list[dict] — whatever retriever.retrieve() returned>
         }
 
-    שם הקובץ: exp_first_query_<run_mode>_<retriever>_<timestamp>.json
+    Filename: exp_first_query_<run_mode>_<retriever>_<timestamp>.json
     """
     if len(queries_df) == 0:
         raise ValueError("queries_df is empty — nothing to dump.")
@@ -185,12 +188,12 @@ def _ensure_stage(
     builder_kwargs: dict,
 ) -> None:
     """
-    תבנית גנרית לשלב צנרת:
-      • אם הפלט קיים — SKIP ולחזור
-      • אם הקלט חסר — FileNotFoundError עם הקשר
-      • אחרת — להפעיל את הבילדר ולהדפיס BUILD/DONE
-    הקריאה ל-import של הבילדר נשארת בפונקציות הציבוריות (lazy),
-    כדי לא לטעון מודולים שלא ירוצו בשלב זה.
+    Generic template for a pipeline stage:
+      • If the output already exists  → SKIP and return
+      • If the input is missing       → raise FileNotFoundError with context
+      • Otherwise                     → run the builder and print BUILD/DONE
+    The builder import stays in the public functions (lazy) so we don't load
+    modules that won't run in this stage.
     """
     if output.exists():
         print(f"{label}  SKIP   — {output.name} already exists")
@@ -209,7 +212,7 @@ def _ensure_stage(
 
 def ensure_chunks_csv(json_file: Path, chunks_csv: Path, chunker_cfg: dict) -> None:
     """
-    שלב 1: מוודא שקובץ ה-chunks קיים. אם לא — קורא ל-chunker.build_chunks_csv.
+    Stage 1: ensure the chunks file exists. If not — call chunker.build_chunks_csv.
     """
     # lazy import — only when we actually need to run the chunker
     from chunker.chunker import build_chunks_csv
@@ -230,15 +233,17 @@ def ensure_chunks_csv(json_file: Path, chunks_csv: Path, chunker_cfg: dict) -> N
 
 def ensure_embeddings_npy(chunks_csv: Path, embeddings_npy: Path, embed_cfg: dict) -> None:
     """
-    שלב 2: מוודא שקובץ ה-embeddings (.npy) קיים. אם לא — קורא ל-embed.build_embeddings.
+    Stage 2: ensure the embeddings file (.npy) exists. If not — call
+    embed.build_embeddings.
 
-    דרישה מוקדמת: chunks_csv חייב להתקיים (מטופל ב-ensure_chunks_csv לפני שלב זה).
+    Prerequisite: chunks_csv must exist (handled by ensure_chunks_csv before
+    this stage).
     """
     # lazy import — only when we actually need to run the embedder
     from embedder.embed import build_embeddings
 
     _ensure_stage(
-        label          = "[2/3 embed]  ",   # padding כדי ליישר עם '[1/3 chunker]'
+        label          = "[2/3 embed]  ",   # padding to align with '[1/3 chunker]'
         output         = embeddings_npy,
         input_path     = chunks_csv,
         input_label    = "Chunks CSV",
@@ -363,8 +368,9 @@ def main():
     print("\n" + report_text)
 
     # ── 8. Save ───────────────────────────────────────────────────────────────
-    # מטא-דאטה ברמת ניסוי — שייך לאורכסטרטור, לא ל-evaluator.
-    # נרמול JSON-serializable של המדדים מתבצע כעת בתוך RetrievalEvaluator.
+    # Experiment-level metadata — owned by the orchestrator, not the evaluator.
+    # JSON-serializable normalization of the metrics is now handled inside
+    # RetrievalEvaluator.
     result["timestamp"]       = ts_readable
     result["retriever"]       = args.retriever
     result["config"]          = str(CONFIG_PATH)
