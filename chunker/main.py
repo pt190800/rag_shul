@@ -2,12 +2,12 @@
 chunker/main.py — CLI entry point for the chunker
 ==================================================
 Loads Schema 2 JSON, builds the chunk list, and saves it to JSON.
-Input/output paths default to values in config/config_template.yaml (paths.schema_json / paths.chunks_json).
+Input/output paths default to values in config/config.yaml (paths.schema_json / paths.chunks_json).
 
 Usage:
     python -m chunker.main
-    python -m chunker.main --input data/shulchan_aruch_rag.json
-    python -m chunker.main --input data/shulchan_aruch_rag.json --output data/chunks.json
+    python -m chunker.main --input data/processed/shulchan_aruch_rag.json
+    python -m chunker.main --input data/processed/shulchan_aruch_rag.json --output data/chunks.json
 """
 
 import argparse
@@ -23,7 +23,7 @@ def main():
     cfg       = load_config()
     run_mode  = cfg.get("run_mode", "full")
     cfg_paths = cfg.get("paths", {}).get(run_mode, cfg.get("paths", {}))
-    default_input  = str(HERE / cfg_paths.get("schema_json", "data/shulchan_aruch_rag.json"))
+    default_input  = str(HERE / cfg_paths.get("schema_json", "data/processed/shulchan_aruch_rag.json"))
     default_output = str(HERE / cfg_paths.get("chunks_json", "data/chunks.json"))
 
     parser = argparse.ArgumentParser(description="Chunker — build chunk list from Schema 2 JSON")

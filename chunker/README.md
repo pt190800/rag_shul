@@ -71,9 +71,9 @@ python3 -m chunker.main --input data/processed/shulchan_aruch_rag.json --output 
 ```python
 from chunker import build_chunks
 
-chunks = build_chunks("data/shulchan_aruch_rag.json")
+chunks = build_chunks("data/processed/shulchan_aruch_rag.json")
 # returns list[dict] with id, siman, seif, siman_seif, text
 
 # override mode or fields without touching config:
-chunks = build_chunks("data/shulchan_aruch_rag.json", mode="siman", chunk_fields=["text", "hagah"])
+chunks = build_chunks("data/processed/shulchan_aruch_rag.json", mode="siman", chunk_fields=["text", "hagah"])
 ```
