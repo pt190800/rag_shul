@@ -59,9 +59,9 @@ chunker:
 ## Run (CLI)
 
 ```bash
-python -m chunker.main
+python3 -m chunker.main
 # or with explicit paths:
-python -m chunker.main --input data/shulchan_aruch_rag.json --output data/chunks.json
+python3 -m chunker.main --input data/shulchan_aruch_rag.json --output data/chunks.json
 ```
 
 ---
