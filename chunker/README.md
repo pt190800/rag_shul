@@ -6,7 +6,7 @@ Reads the Shulchan Arukh RAG JSON and produces a `chunks.json` file for the embe
 
 ## Input
 
-JSON file with this structure (`data/shulchan_aruch_rag.json`):
+JSON file with this structure (`data/processed/shulchan_aruch_rag.json`):
 ```json
 {
   "simanim": [
@@ -61,7 +61,7 @@ chunker:
 ```bash
 python3 -m chunker.main
 # or with explicit paths:
-python3 -m chunker.main --input data/shulchan_aruch_rag.json --output data/chunks.json
+python3 -m chunker.main --input data/processed/shulchan_aruch_rag.json --output data/chunks.json
 ```
 
 ---

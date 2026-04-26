@@ -25,7 +25,7 @@ paths:
     chunks_csv:      "chunks_v1.csv"                              # ← changed
     embeddings_npy:  "embeddings_v1.npy"
     csv_path:        "../data/eval/sa_eval.csv"
-    schema_json: "data/shulchan_aruch_rag.json"
+    schema_json: "data/processed/shulchan_aruch_rag.json"
     chunks_json: "data/chunks_siman.json"
 
   mini:
@@ -33,14 +33,14 @@ paths:
     chunks_csv:      "mini_chunks_v1.csv"
     embeddings_npy:  "mini_embeddings_v1.npy"
     csv_path:        "../data/eval/mini_sa_eval.csv"
-    schema_json: "data/shulchan_aruch_rag.json"
+    schema_json: "data/processed/shulchan_aruch_rag.json"
     chunks_json: "data/chunks_siman.json"
 
 
 chunker:
   chunk_size: 200       # words per chunk
   overlap: 50           # words shared between consecutive chunks
-  mode: siman            # "seif" | "siman" | "sliding_window"
+  mode: seif            # "seif" | "siman" | "sliding_window"
   chunk_fields:         # ordered list of seif fields to join into the chunk text
     - text
     - hagah             # uncomment to include Rema commentary
