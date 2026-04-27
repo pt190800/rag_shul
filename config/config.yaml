@@ -39,6 +39,8 @@ paths:
 
 chunker:
   chunk_size: 200       # words per chunk
+  chunk_output_file: &chunk_file "chunks.json"
+  output_type: "json"
   overlap: 50           # words shared between consecutive chunks
   mode: seif            # "seif" | "siman" | "sliding_window"
   chunk_fields:         # ordered list of seif fields to join into the chunk text
@@ -47,7 +49,9 @@ chunker:
     # - siman_title       # uncomment to prepend the siman topic heading to each chunk
 
 embeddings:
+  chunk_file: *chunk_file
   model: "intfloat/multilingual-e5-large"
+  prompt: ""
   batch_size: 32
   prefix_passage: "passage: "   # prepended to breadcrumb+text during build_embeddings
   prefix_query:   "query: "     # prepended to the query during retriever.retrieve
@@ -56,9 +60,13 @@ embeddings:
 
 
 retrieval:
+  chunk_file: *chunk_file
   top_k:          3     # chunks returned to the user / LLM
   top_k_retrieve: 10    # chunks retrieved for Recall@K computation
   score_threshold: 0.85
+
+query:
+  prompt: ""
 
 evaluation:
   # Evaluator type: 'retrieval' (Exists) or 'llm_qa' (future)
