@@ -1,8 +1,6 @@
 # Chat UI
 
-A Hebrew RTL chat interface for asking halacha (Jewish law) questions, powered by OpenAI GPT.
-
-🔗 **Live demo: [halacha-chat.vercel.app](https://halacha-chat.vercel.app)**
+A Hebrew RTL interface for comparing RAG-augmented answers against plain GPT answers, powered by OpenAI GPT and ChromaDB.
 
 ---
 
@@ -22,49 +20,26 @@ Open `chat-ui/.env` and replace the placeholder with your key:
 ```
 OPENAI_API_KEY=sk-...
 ```
-Get a key at [platform.openai.com/api-keys](https://platform.openai.com/api-keys)
 
 **3. Install Python dependencies**
 ```bash
 pip install -r requirements.txt
 ```
 
----
-
-## Option A — Run locally (no extra tools)
-
+**4. Build the ChromaDB (first time only)**
 ```bash
-python run_chat.py
+python3 embedder/embed.py --chunks data/chunks_siman.json
 ```
-Open [http://localhost:3000](http://localhost:3000)
 
 ---
 
-## Option B — Run with Vercel CLI
-
-Install the Vercel CLI once:
-```bash
-npm install -g vercel
-```
-Then run from the `chat-ui` folder:
-```bash
-cd chat-ui
-vercel dev
-```
-Open [http://localhost:3000](http://localhost:3000)
-
-> Use this option if you plan to deploy to Vercel — it simulates the production environment exactly.
-
----
-
-## Deploy to Vercel
+## Run locally
 
 ```bash
 cd chat-ui
-vercel --prod
+python3 server.py
 ```
-
-> First time? Create a project at [vercel.com](https://vercel.com) and add `OPENAI_API_KEY` under **Settings → Environment Variables**.
+Open [http://localhost:3000](http://localhost:3000)
 
 ---
 
@@ -72,9 +47,8 @@ vercel --prod
 
 | File | Purpose |
 |------|---------|
-| `run_chat.py` | Local dev server (run from repo root) |
-| `requirements.txt` | Python dependencies |
-| `chat-ui/index.html` | Chat UI |
-| `chat-ui/api/chat.py` | Serverless function that calls OpenAI |
-| `chat-ui/.env.example` | API key template — never commit a real key |
-| `chat-ui/vercel.json` | Vercel configuration |
+| `server.py` | Local dev server — serves static files and routes API calls |
+| `index.html` | Three-tab comparison UI |
+| `api/chat.py` | POST `/api/chat` — calls ChromaRetriever then OpenAI |
+| `api/eval.py` | GET `/api/eval` — serves the eval CSV as JSON |
+| `.env.example` | API key template — never commit a real key |

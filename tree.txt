@@ -12,7 +12,6 @@ rag_shul/
 |   |   index.html
 |   |   README.md
 |   |   server.py
-|   |   vercel.json
 |   |
 |   \---api
 |           chat.py
