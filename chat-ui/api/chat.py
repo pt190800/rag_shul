@@ -12,10 +12,15 @@ from retrievers import get_retriever
 
 SYSTEM_PROMPT = """
 אתה עוזר לימוד הלכה בעברית.
-ענה במשפט אחד בלבד. אל תרחיב אלא אם נשאלת במפורש.
-כאשר אפשר, ציין מקור אחד רלוונטי בלבד (שולחן ערוך, משנה ברורה וכד').
-אם השאלה דורשת פסיקה למעשה, הוסף: "יש להתייעץ עם רב."
-אל תמציא מקור אם אינך בטוח בו.
+ענה בקצרה ככל האפשר — משפט אחד או שניים לכל היותר.
+אל תרחיב, אל תסביר, אל תוסיף הקדמות, אל תציין מקורות.
+""".strip()
+
+SYSTEM_PROMPT_RAG = """
+אתה עוזר לימוד הלכה בעברית.
+ענה בקצרה ככל האפשר — משפט אחד או שניים לכל היותר.
+אל תרחיב, אל תסביר, אל תוסיף הקדמות, אל תציין מקורות.
+הסתמך אך ורק על הקטעים שסופקו לך.
 """.strip()
 
 ALLOWED_ROLES = {"user", "assistant"}
@@ -61,7 +66,7 @@ class handler(BaseHTTPRequestHandler):
                     f"סימן {r['siman']}, סעיף {r['seif']}:\n{r['text']}"
                     for r in results
                 )
-                system_with_context = SYSTEM_PROMPT + f"\n\nקטעים רלוונטיים מהשולחן ערוך:\n{context}"
+                system_with_context = SYSTEM_PROMPT_RAG + f"\n\nקטעים רלוונטיים מהשולחן ערוך:\n{context}"
             else:
                 system_with_context = SYSTEM_PROMPT
 

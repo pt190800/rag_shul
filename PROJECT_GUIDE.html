@@ -1,0 +1,1569 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>מדריך מלא לפרויקט rag_shul</title>
+  <style>
+    /* ===== FONTS ===== */
+    @import url('https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;700;800&display=swap');
+
+    /* ===== RESET & BASE ===== */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --primary:    #2563eb;
+      --primary-dk: #1d4ed8;
+      --accent:     #7c3aed;
+      --green:      #16a34a;
+      --yellow:     #ca8a04;
+      --red:        #dc2626;
+      --bg:         #f8fafc;
+      --surface:    #ffffff;
+      --border:     #e2e8f0;
+      --text:       #1e293b;
+      --muted:      #64748b;
+      --code-bg:    #1e293b;
+      --code-text:  #e2e8f0;
+    }
+
+    html { font-size: 16px; }
+
+    body {
+      font-family: 'Heebo', 'Arial Hebrew', Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.75;
+      direction: rtl;
+    }
+
+    /* ===== LAYOUT ===== */
+    .page-wrap {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 40px 32px 80px;
+    }
+
+    /* ===== COVER ===== */
+    .cover {
+      background: linear-gradient(135deg, #1e293b 0%, #2563eb 60%, #7c3aed 100%);
+      color: #fff;
+      border-radius: 16px;
+      padding: 60px 48px 50px;
+      margin-bottom: 48px;
+      position: relative;
+      overflow: hidden;
+    }
+    .cover::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.04'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+    }
+    .cover-badge {
+      display: inline-block;
+      background: rgba(255,255,255,0.15);
+      border: 1px solid rgba(255,255,255,0.3);
+      border-radius: 20px;
+      padding: 4px 14px;
+      font-size: 0.75rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      margin-bottom: 20px;
+    }
+    .cover h1 {
+      font-size: 2.6rem;
+      font-weight: 800;
+      line-height: 1.2;
+      margin-bottom: 16px;
+    }
+    .cover .subtitle {
+      font-size: 1.05rem;
+      opacity: 0.85;
+      max-width: 560px;
+    }
+    .cover-meta {
+      margin-top: 36px;
+      display: flex;
+      gap: 24px;
+      font-size: 0.85rem;
+      opacity: 0.7;
+    }
+
+    /* ===== TOC ===== */
+    .toc {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 28px 32px;
+      margin-bottom: 48px;
+    }
+    .toc h2 {
+      font-size: 1rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--muted);
+      margin-bottom: 16px;
+    }
+    .toc ol {
+      list-style: none;
+      counter-reset: toc;
+    }
+    .toc ol li {
+      counter-increment: toc;
+      border-bottom: 1px solid var(--border);
+      padding: 8px 0;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .toc ol li:last-child { border-bottom: none; }
+    .toc ol li::before {
+      content: counter(toc, decimal-leading-zero);
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: var(--primary);
+      min-width: 28px;
+    }
+    .toc a {
+      color: var(--text);
+      text-decoration: none;
+      font-size: 0.95rem;
+    }
+    .toc a:hover { color: var(--primary); }
+
+    /* ===== SECTIONS ===== */
+    section {
+      margin-bottom: 56px;
+    }
+    section + section {
+      border-top: 2px solid var(--border);
+      padding-top: 48px;
+    }
+
+    /* ===== HEADINGS ===== */
+    h1 { font-size: 2rem; font-weight: 800; }
+    h2 {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: var(--primary-dk);
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    h2 .num {
+      background: var(--primary);
+      color: #fff;
+      border-radius: 8px;
+      padding: 2px 10px;
+      font-size: 0.85rem;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+    h3 {
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: var(--accent);
+      margin: 24px 0 10px;
+    }
+    h4 {
+      font-size: 1rem;
+      font-weight: 600;
+      color: var(--text);
+      margin: 18px 0 8px;
+    }
+
+    /* ===== PARAGRAPHS & LISTS ===== */
+    p { margin-bottom: 12px; }
+    ul, ol {
+      padding-right: 20px;
+      margin-bottom: 14px;
+    }
+    li { margin-bottom: 5px; }
+
+    /* ===== PROCESS CARDS ===== */
+    .process-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+      margin-bottom: 8px;
+    }
+    .process-card-header {
+      background: linear-gradient(90deg, var(--primary) 0%, var(--accent) 100%);
+      color: #fff;
+      padding: 14px 20px;
+      font-weight: 700;
+      font-size: 1rem;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .process-card-header .step-badge {
+      background: rgba(255,255,255,0.2);
+      border-radius: 6px;
+      padding: 2px 8px;
+      font-size: 0.75rem;
+    }
+    .process-card-body { padding: 20px; }
+
+    /* IO boxes */
+    .io-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin: 12px 0 16px;
+    }
+    .io-box {
+      border-radius: 8px;
+      padding: 12px 14px;
+      font-size: 0.88rem;
+    }
+    .io-box.input  { background: #eff6ff; border: 1px solid #bfdbfe; }
+    .io-box.output { background: #f0fdf4; border: 1px solid #bbf7d0; }
+    .io-box strong {
+      display: block;
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 4px;
+      color: var(--muted);
+    }
+
+    /* ===== FLOW DIAGRAM ===== */
+    .flow {
+      background: var(--code-bg);
+      color: var(--code-text);
+      border-radius: 10px;
+      padding: 20px 24px;
+      font-family: 'Courier New', monospace;
+      font-size: 0.82rem;
+      line-height: 2;
+      margin: 12px 0;
+      overflow-x: auto;
+      direction: ltr;
+      text-align: left;
+    }
+    .flow .arrow { color: #60a5fa; }
+    .flow .label { color: #a78bfa; }
+    .flow .file  { color: #34d399; }
+    .flow .note  { color: #fbbf24; font-style: italic; }
+
+    /* ===== CODE BLOCKS ===== */
+    pre {
+      background: var(--code-bg);
+      color: var(--code-text);
+      border-radius: 8px;
+      padding: 16px 18px;
+      font-size: 0.82rem;
+      overflow-x: auto;
+      margin: 10px 0 14px;
+      direction: ltr;
+      text-align: left;
+      font-family: 'Courier New', monospace;
+      line-height: 1.6;
+    }
+    code {
+      background: #f1f5f9;
+      color: #7c3aed;
+      border-radius: 4px;
+      padding: 1px 5px;
+      font-family: 'Courier New', monospace;
+      font-size: 0.88em;
+    }
+    pre code {
+      background: none;
+      color: inherit;
+      padding: 0;
+      font-size: inherit;
+    }
+
+    /* ===== TABLES ===== */
+    .table-wrap { overflow-x: auto; margin: 12px 0 16px; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.9rem;
+    }
+    thead tr { background: var(--primary); color: #fff; }
+    thead th {
+      padding: 10px 14px;
+      text-align: right;
+      font-weight: 600;
+    }
+    tbody tr { border-bottom: 1px solid var(--border); }
+    tbody tr:nth-child(even) { background: #f8fafc; }
+    tbody td { padding: 9px 14px; }
+
+    /* ===== BADGES ===== */
+    .badge {
+      display: inline-block;
+      border-radius: 12px;
+      padding: 2px 10px;
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+    .badge-green  { background: #dcfce7; color: #16a34a; }
+    .badge-yellow { background: #fef9c3; color: #ca8a04; }
+    .badge-red    { background: #fee2e2; color: #dc2626; }
+    .badge-blue   { background: #dbeafe; color: #1d4ed8; }
+
+    /* ===== CALLOUT ===== */
+    .callout {
+      border-radius: 8px;
+      padding: 14px 16px;
+      margin: 14px 0;
+      font-size: 0.92rem;
+      display: flex;
+      gap: 10px;
+    }
+    .callout-info    { background: #eff6ff; border-right: 4px solid #2563eb; }
+    .callout-warn    { background: #fefce8; border-right: 4px solid #ca8a04; }
+    .callout-success { background: #f0fdf4; border-right: 4px solid #16a34a; }
+    .callout-tip     { background: #faf5ff; border-right: 4px solid #7c3aed; }
+    .callout-icon { font-size: 1.1rem; flex-shrink: 0; }
+
+    /* ===== ISSUE CARDS (chapter 13) ===== */
+    .issue-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 18px 20px;
+      margin-bottom: 16px;
+    }
+    .issue-card .issue-title {
+      font-weight: 700;
+      font-size: 0.95rem;
+      color: #dc2626;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .issue-card .issue-fix {
+      margin-top: 10px;
+      padding: 10px 14px;
+      background: #f0fdf4;
+      border-radius: 6px;
+      border-right: 3px solid #16a34a;
+      font-size: 0.88rem;
+    }
+    .issue-card .issue-fix strong { color: #16a34a; }
+
+    /* ===== PRIORITY TABLE ===== */
+    .priority-table tr td:first-child { font-size: 1.1rem; text-align: center; }
+
+    /* ===== METRICS ===== */
+    .metrics-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 12px;
+      margin: 16px 0;
+    }
+    .metric-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 16px;
+      text-align: center;
+    }
+    .metric-card .metric-value {
+      font-size: 1.7rem;
+      font-weight: 800;
+      color: var(--primary);
+      line-height: 1;
+      margin-bottom: 4px;
+    }
+    .metric-card.highlight .metric-value { color: var(--accent); }
+    .metric-card .metric-label {
+      font-size: 0.78rem;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+
+    /* ===== BLOCKQUOTE ===== */
+    blockquote {
+      border-right: 4px solid var(--primary);
+      padding: 10px 16px;
+      margin: 14px 0;
+      background: #eff6ff;
+      border-radius: 0 8px 8px 0;
+      color: #334155;
+      font-style: italic;
+    }
+
+    /* ===== DIVIDER ===== */
+    hr { border: none; border-top: 2px solid var(--border); margin: 32px 0; }
+
+    /* ===== FOOTER ===== */
+    footer {
+      text-align: center;
+      color: var(--muted);
+      font-size: 0.82rem;
+      margin-top: 60px;
+      padding-top: 24px;
+      border-top: 1px solid var(--border);
+    }
+
+    /* ===== PRINT ===== */
+    @media print {
+      @page {
+        size: A4;
+        margin: 20mm 18mm 20mm 18mm;
+      }
+      body { background: #fff; font-size: 10.5pt; }
+      .page-wrap { padding: 0; max-width: 100%; }
+      .cover {
+        background: #1e293b !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+        border-radius: 0;
+        margin-bottom: 24pt;
+      }
+      .cover h1 { font-size: 20pt; }
+      section { page-break-inside: avoid; }
+      section + section { border-top: 1pt solid #e2e8f0; padding-top: 24pt; }
+      h2 { font-size: 13pt; page-break-after: avoid; }
+      h3 { font-size: 11pt; page-break-after: avoid; }
+      pre, .flow { page-break-inside: avoid; font-size: 8pt; }
+      .process-card { page-break-inside: avoid; }
+      .issue-card { page-break-inside: avoid; }
+      .toc { page-break-after: always; }
+      a { color: inherit; text-decoration: none; }
+      .io-grid { grid-template-columns: 1fr 1fr; }
+    }
+  </style>
+</head>
+<body>
+<div class="page-wrap">
+
+  <!-- COVER -->
+  <div class="cover">
+    <div class="cover-badge">תיעוד טכני · 2026</div>
+    <h1>מדריך מלא לפרויקט<br>rag_shul</h1>
+    <p class="subtitle">מסמך זה מסביר את כל חלקי הפרויקט — כל תהליך, קלט, פלט, ומה קורה בתוכו — ומסיים בניתוח ביקורתי של הקוד ועצות לשיפור.</p>
+    <div class="cover-meta">
+      <span>📅 11 במאי 2026</span>
+      <span>📄 18 פרקים</span>
+      <span>🔬 RAG · שולחן ערוך · אורח חיים</span>
+    </div>
+  </div>
+
+  <!-- TOC -->
+  <div class="toc">
+    <h2>תוכן עניינים</h2>
+    <ol>
+      <li><a href="#s1">רקע ומטרת הפרויקט</a></li>
+      <li><a href="#s2">מבנה הפרויקט</a></li>
+      <li><a href="#s3">נקודת ההתחלה — הטקסט הגולמי</a></li>
+      <li><a href="#s4">תהליך 2 — עיבוד הטקסט הגולמי</a></li>
+      <li><a href="#s5">תהליך 3 — הוספת כותרות (Breadcrumb)</a></li>
+      <li><a href="#s6">תהליך 4 — חלוקה לצ'אנקים (Chunker)</a></li>
+      <li><a href="#s7">תהליך 5 — הטמעת וקטורים (Embedder)</a></li>
+      <li><a href="#s8">תהליך 6 — שליפה (Retriever)</a></li>
+      <li><a href="#s9">תהליך 7 — הערכה (Evaluation)</a></li>
+      <li><a href="#s10">תהליך 8 — ממשק המשתמש (Chat UI)</a></li>
+      <li><a href="#s11">זרימת הנתונים מקצה לקצה</a></li>
+      <li><a href="#s12">תוצאות הניסויים</a></li>
+      <li><a href="#s13">ביקורת הקוד — מה לא טוב ועצות לשיפור</a></li>
+      <li><a href="#s14">Quick Start — הרצה מאפס</a></li>
+      <li><a href="#s15">הוספת Retriever חדש</a></li>
+      <li><a href="#s16">ציר הזמן של הניסויים — מה עבד ומה לא</a></li>
+      <li><a href="#s17">מודל E5 — למה דווקא הוא?</a></li>
+      <li><a href="#s18">Troubleshooting — שגיאות נפוצות</a></li>
+    </ol>
+  </div>
+
+  <!-- ========== SECTION 1 ========== -->
+  <section id="s1">
+    <h2><span class="num">01</span> רקע ומטרת הפרויקט</h2>
+
+    <p><strong>rag_shul</strong> הוא מערכת RAG (Retrieval-Augmented Generation) שנבנתה על גבי <strong>שולחן ערוך, אורח חיים</strong> — אחד מספרי ההלכה הבסיסיים ביהדות.</p>
+
+    <h3>מה המערכת עושה?</h3>
+    <p>המשתמש שואל שאלת הלכה בעברית. המערכת:</p>
+    <ol>
+      <li>מחפשת בשולחן ערוך את הקטעים הרלוונטיים ביותר לשאלה</li>
+      <li>מעבירה אותם ל-GPT יחד עם השאלה</li>
+      <li>GPT מייצר תשובה מבוססת-מקורות</li>
+    </ol>
+    <p>בנוסף, ניתן להשוות תשובות עם ובלי RAG — כדי למדוד כמה ה-RAG מועיל.</p>
+
+    <h3>הגרסיון של הטקסט</h3>
+    <p>הטקסט מבוסס על מהדורת <strong>תורת אמת 363</strong>, כולל:</p>
+    <ul>
+      <li>697 סימנים</li>
+      <li>~4,169 סעיפים</li>
+      <li>~30,000 מילים</li>
+      <li>טקסט המחבר + הגה"ה של הרמ"א</li>
+    </ul>
+  </section>
+
+  <!-- ========== SECTION 2 ========== -->
+  <section id="s2">
+    <h2><span class="num">02</span> מבנה הפרויקט</h2>
+    <pre>rag_shul/
+├── build_source_from_sefaria.py   ← שלב 0: הורדת טקסט
+├── data/
+│   ├── source_original/           ← קבצי טקסט גולמיים
+│   ├── processed/                 ← JSON מובנה לאחר עיבוד
+│   ├── scripts/                   ← סקריפטים לעיבוד נתונים
+│   ├── chunks_siman.json          ← צ'אנקים מרובי-גרסאות (הפלט המרכזי)
+│   └── eval/sa_eval.csv           ← 596 שאלות לבנצ'מרק
+├── chunker/                       ← שלב 2: חלוקה לצ'אנקים
+├── embedder/                      ← שלב 3: הטמעת וקטורים + ChromaDB
+├── retrievers/                    ← שלב 4: שליפת תוצאות
+├── evaluation/                    ← שלב 5: מדידת ביצועים
+├── chat-ui/                       ← שלב 6: ממשק משתמש
+└── config/config.yaml             ← הגדרות הפרויקט</pre>
+  </section>
+
+  <!-- ========== SECTION 3 ========== -->
+  <section id="s3">
+    <h2><span class="num">03</span> נקודת ההתחלה — הטקסט הגולמי</h2>
+
+    <div class="process-card">
+      <div class="process-card-header">
+        <span class="step-badge">קלט ראשי</span>
+        data/source_original/
+      </div>
+      <div class="process-card-body">
+        <p>הטקסט הגולמי הוא <strong>קובץ מקומי</strong> שכבר קיים בתוך הריפו — אין צורך להוריד שום דבר.</p>
+
+        <div class="io-grid">
+          <div class="io-box input">
+            <strong>קבצים קיימים</strong>
+            <code>data_fixed.txt</code> — מהדורת תורת אמת 363<br>
+            <code>Shulchan_Aruch_Text_Headlines.txt</code> — כותרות סימנים
+          </div>
+          <div class="io-box output">
+            <strong>משמש ל</strong>
+            קלט לכל שלבי העיבוד הבאים
+          </div>
+        </div>
+
+        <h3>build_source_from_sefaria.py — כלי עזר נפרד</h3>
+        <p>קובץ זה <strong>אינו חלק מהצינור הראשי</strong>. הוא מוריד מ-Sefaria API ומייצר:</p>
+        <pre>data/Shulchan_Arukh_OC_sefaria_{timestamp}.txt</pre>
+        <div class="callout callout-warn">
+          <span class="callout-icon">⚠️</span>
+          <span>הפלט של הסקריפט הזה הוא <strong>קובץ שונה</strong> מ-<code>data_fixed.txt</code>. הפרויקט הנוכחי משתמש ב-<code>data_fixed.txt</code> (תורת אמת 363) בלבד.</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========== SECTION 4 ========== -->
+  <section id="s4">
+    <h2><span class="num">04</span> תהליך 2 — עיבוד הטקסט הגולמי</h2>
+
+    <div class="process-card">
+      <div class="process-card-header">
+        <span class="step-badge">שלב 1</span>
+        data/scripts/build_shulchan_aruch_rag.py
+      </div>
+      <div class="process-card-body">
+        <p>הופך את הטקסט הגולמי (TXT לא מובנה) ל-JSON מובנה ומנוקה, עם היררכיה ברורה של סימן → סעיף.</p>
+
+        <div class="io-grid">
+          <div class="io-box input">
+            <strong>קלט</strong>
+            <code>data/source_original/data_fixed.txt</code><br>
+            טקסט גולמי עם ניקוד, קיצורים ותגיות HTML
+          </div>
+          <div class="io-box output">
+            <strong>פלט</strong>
+            <code>data/processed/shulchan_aruch_rag.json</code>
+          </div>
+        </div>
+
+        <h3>מבנה ה-JSON</h3>
+        <pre>{
+  "title": "שולחן ערוך, אורח חיים",
+  "source": "Torat Emet 363",
+  "simanim": [
+    {
+      "siman": 1,
+      "seifim": [
+        {
+          "seif": 1,
+          "text": "ישתדל אדם לעמוד בבוקר לעבודת בוראו...",
+          "hagah": "ויש אומרים...",
+          "text_raw": "יִשְׁתַּדֵּל אָדָם לַעֲמֹד בַּבֹּקֶר..."
+        }
+      ]
+    }
+  ]
+}</pre>
+
+        <h3>שלושה 7 שלבי עיבוד</h3>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>שלב</th><th>שם</th><th>מה עושה</th></tr></thead>
+            <tbody>
+              <tr><td>1</td><td>Basic fixes</td><td>מאחד תגיות HTML מפוצלות, משלים סוגריים פתוחים</td></tr>
+              <tr><td>2</td><td>Small cleanup</td><td>מסיר ציטוטים מיותרים, הפניות למחבר</td></tr>
+              <tr><td>3</td><td>Number expansion</td><td>ממיר גימטריות (ק"ג → 103) לפי הקשר</td></tr>
+              <tr><td>4</td><td>Ktiv male</td><td>מסיר ניקוד, מרחיב קיצורים ("ב'" → "בית")</td></tr>
+              <tr><td>5</td><td>Unification</td><td>מאחד שמות קדושים, מוחק ביטויים חוזרים</td></tr>
+              <tr><td>6</td><td>Final cleanup</td><td>מנרמל רווחים ופיסוק</td></tr>
+              <tr><td>7</td><td>Structure</td><td>מפצל לסימנים ← סעיפים, מזהה הגה"ה של הרמ"א</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========== SECTION 5 ========== -->
+  <section id="s5">
+    <h2><span class="num">05</span> תהליך 3 — הוספת כותרות (Breadcrumb)</h2>
+
+    <div class="process-card">
+      <div class="process-card-header">
+        <span class="step-badge">שלב 1b</span>
+        data/scripts/add_breadcrumb_to_json.py
+      </div>
+      <div class="process-card-body">
+        <p>מוסיף לכל סימן את <strong>שם הנושא</strong> שלו (למשל "הלכות ציצית") ואת <strong>כותרת הסימן</strong> (למשל "דין הציצית"). מידע זה לא היה בטקסט הגולמי — הוא נלקח מקובץ תוכן עניינים נפרד.</p>
+
+        <div class="io-grid">
+          <div class="io-box input">
+            <strong>קלט</strong>
+            <code>shulchan_aruch_rag.json</code> + קובץ כותרות TXT
+          </div>
+          <div class="io-box output">
+            <strong>פלט</strong>
+            <code>shulchan_aruch_rag_with_breadcrumb.json</code>
+          </div>
+        </div>
+
+        <h3>מבנה הפלט</h3>
+        <pre>{
+  "siman": 1,
+  "hilchot_group": "הלכות הנהגת אדם בבוקר",
+  "siman_sign": "דין השכמת הבוקר",
+  "seifim": [...]
+}</pre>
+
+        <div class="callout callout-tip">
+          <span class="callout-icon">💡</span>
+          <span>כשהמודל מחפש "מה דין ציצית", הוספת "הלכות ציצית" לטקסט הסעיף עוזרת לו למצוא אותו — גם אם המילה "ציצית" לא מופיעה בגוף הסעיף עצמו.</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========== SECTION 6 ========== -->
+  <section id="s6">
+    <h2><span class="num">06</span> תהליך 4 — חלוקה לצ'אנקים (Chunker)</h2>
+
+    <div class="process-card">
+      <div class="process-card-header">
+        <span class="step-badge">שלב 2</span>
+        chunker/chunker.py · chunker/main.py
+      </div>
+      <div class="process-card-body">
+        <p>הופך את ה-JSON המובנה לרשימת <strong>צ'אנקים</strong> (יחידות טקסט קטנות) שניתן להטמיע ולחפש בהן. נוצרות <strong>3 גרסאות שונות</strong> של אותם צ'אנקים.</p>
+
+        <div class="io-grid">
+          <div class="io-box input">
+            <strong>קלט</strong>
+            <code>shulchan_aruch_rag_with_breadcrumb.json</code><br>
+            <code>config/config.yaml</code>
+          </div>
+          <div class="io-box output">
+            <strong>פלט</strong>
+            <code>data/chunks_siman.json</code><br>
+            ~12,500 צ'אנקים (3 גרסאות × 4,169 סעיפים)
+          </div>
+        </div>
+
+        <h3>שלושת הגרסאות</h3>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>גרסה</th><th>מה כוללת</th><th>מטרה</th></tr></thead>
+            <tbody>
+              <tr><td><code>text+hagah</code></td><td>טקסט המחבר + הגה"ה של הרמ"א</td><td>הכי מלאה</td></tr>
+              <tr><td><code>text_only</code></td><td>טקסט המחבר בלבד</td><td>ללא "רעש" ההגה"ה</td></tr>
+              <tr><td><code>text+hilchot_group</code></td><td>טקסט + שם הנושא</td><td>חיפוש לפי נושא</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3>מצבי חלוקה אפשריים</h3>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>מצב</th><th>תיאור</th><th>גודל</th></tr></thead>
+            <tbody>
+              <tr><td><code>seif</code></td><td>צ'אנק אחד לכל סעיף (ברירת מחדל)</td><td>4,169 צ'אנקים</td></tr>
+              <tr><td><code>siman</code></td><td>צ'אנק אחד לכל סימן (כל הסעיפים ביחד)</td><td>697 צ'אנקים</td></tr>
+              <tr><td><code>sliding_window</code></td><td>חלונות של מספר מילים קבוע</td><td>משתנה</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3>הפונקציות הראשיות</h3>
+        <pre>load_schema(path)
+# קלט: נתיב ל-JSON  →  פלט: מילון Python
+
+build_tables(schema, variants)
+# קלט: schema + רשימת גרסאות  →  פלט: רשימת גרסאות עם צ'אנקים
+
+build_dataframe(schema, chunk_fields, siman_fields, mode)
+# קלט: schema + הגדרות שדות  →  פלט: DataFrame שטוח</pre>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========== SECTION 7 ========== -->
+  <section id="s7">
+    <h2><span class="num">07</span> תהליך 5 — הטמעת וקטורים (Embedder)</h2>
+
+    <div class="process-card">
+      <div class="process-card-header">
+        <span class="step-badge">שלב 3</span>
+        embedder/embed.py
+      </div>
+      <div class="process-card-body">
+        <p>ממיר כל צ'אנק טקסט ל<strong>וקטור מספרי</strong> (Embedding) בגודל 1024 מספרים, ושומר הכל ב-ChromaDB — מסד נתונים וקטורי שמאפשר חיפוש מהיר.</p>
+
+        <div class="io-grid">
+          <div class="io-box input">
+            <strong>קלט</strong>
+            <code>data/chunks_siman.json</code>
+          </div>
+          <div class="io-box output">
+            <strong>פלט</strong>
+            <code>embedder/chroma_db/</code><br>
+            12,500 וקטורים × 1024 מימדים
+          </div>
+        </div>
+
+        <h3>מה קורה בפנים?</h3>
+        <div class="flow">
+צ'אנקים מה-JSON<br>
+<span class="arrow">    ↓</span><br>
+<span class="label">הוספת prefix:</span> <span class="note">"passage: " + טקסט</span><br>
+<span class="arrow">    ↓</span> (למשל: "passage: סימן 1, סעיף 1: ישתדל אדם...")<br>
+<span class="label">מודל</span> <span class="file">multilingual-e5-large</span> (1024 מימדים)<br>
+<span class="arrow">    ↓</span> קידוד בקבוצות של 32<br>
+וקטור float32 מנורמל (L2-normalized)<br>
+<span class="arrow">    ↓</span><br>
+שמירה ב-ChromaDB
+        </div>
+
+        <h3>המודל: multilingual-e5-large</h3>
+        <ul>
+          <li>מודל שפה רב-לשוני של Microsoft / Hugging Face</li>
+          <li>מאומן על pairs של שאלות-תשובות</li>
+          <li>מייצר וקטורים של 1024 מימדים, מנורמלים (L2)</li>
+          <li><strong>חובה:</strong> <code>"passage: "</code> לפני טקסט, <code>"query: "</code> לפני שאלה — ללא זה הביצועים יורדים משמעותית</li>
+        </ul>
+
+        <h3>הפונקציות הראשיות</h3>
+        <pre>load_tables(path)           → list[(type_text, chunks)]
+build_encoding_texts(...)   → list[str]  # "passage: ..." לכל צ'אנק
+embed(texts, model, ...)    → np.ndarray (N, 1024)
+encode_query(query, ...)    → np.ndarray (1024,)
+store_in_chroma(...)        → שמירה ל-ChromaDB
+get_existing_type_texts()   → set  # כדי לא להטמיע שוב</pre>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========== SECTION 8 ========== -->
+  <section id="s8">
+    <h2><span class="num">08</span> תהליך 6 — שליפה (Retriever)</h2>
+
+    <div class="process-card">
+      <div class="process-card-header">
+        <span class="step-badge">שלב 4</span>
+        retrievers/chroma_retriever.py
+      </div>
+      <div class="process-card-body">
+        <p>מקבל שאלה, ממיר אותה לוקטור, ומחפש ב-ChromaDB את הצ'אנקים הקרובים ביותר מבחינה סמנטית.</p>
+
+        <div class="io-grid">
+          <div class="io-box input">
+            <strong>קלט</strong>
+            שאלה בעברית + <code>top_k</code>
+          </div>
+          <div class="io-box output">
+            <strong>פלט</strong>
+            רשימה מדורגת: rank, score, text, siman, seif
+          </div>
+        </div>
+
+        <h3>מה קורה בפנים?</h3>
+        <div class="flow">
+שאלה: "מה דין ציצית?"<br>
+<span class="arrow">    ↓</span><br>
+<span class="label">encode_query(</span><span class="note">"query: מה דין ציצית?"</span><span class="label">)</span>  ← prefix חשוב!<br>
+<span class="arrow">    ↓</span> וקטור (1024,)<br>
+ChromaDB: cosine similarity מול 12,500 וקטורים<br>
+<span class="note">    (similarity = dot product כי הוקטורים מנורמלים)</span><br>
+<span class="arrow">    ↓</span><br>
+דירוג לפי ציון + החזרת top_k
+        </div>
+
+        <h3>שלושת ה-Retrievers בפרויקט</h3>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Retriever</th><th>קובץ</th><th>סטטוס</th></tr></thead>
+            <tbody>
+              <tr>
+                <td><code>ChromaRetriever</code></td>
+                <td>chroma_retriever.py</td>
+                <td><span class="badge badge-green">מומלץ</span></td>
+              </tr>
+              <tr>
+                <td><code>NpyRetriever</code></td>
+                <td>npy_retriever.py</td>
+                <td><span class="badge badge-yellow">Legacy</span></td>
+              </tr>
+              <tr>
+                <td><code>SemanticE5SeifV6...</code></td>
+                <td>semantic_e5_seif_v6_combined.py</td>
+                <td><span class="badge badge-yellow">Legacy</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3>שימוש</h3>
+        <pre>from retrievers import get_retriever
+
+# גרסה אחת
+r = get_retriever("chroma", type_text="text+hagah")
+results = r.retrieve("מה דין ציצית?", top_k=5)
+
+# כל הגרסאות בנפרד
+r = get_retriever("chroma", type_text=None)
+by_variant = r.retrieve_by_variant("מה דין ציצית?", top_k=5)
+# {"text+hagah": [...], "text_only": [...], "text+hilchot_group": [...]}</pre>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========== SECTION 9 ========== -->
+  <section id="s9">
+    <h2><span class="num">09</span> תהליך 7 — הערכה (Evaluation)</h2>
+
+    <div class="process-card">
+      <div class="process-card-header">
+        <span class="step-badge">שלב 5</span>
+        evaluation/retrieval_evaluator.py
+      </div>
+      <div class="process-card-body">
+        <p>בודק כמה טוב ה-Retriever — כמה פעמים הוא מוצא את הסימן הנכון ב-K התוצאות הראשונות.</p>
+
+        <div class="io-grid">
+          <div class="io-box input">
+            <strong>קלט</strong>
+            <code>data/eval/sa_eval.csv</code><br>
+            596 שאלות — עמודות: <code>#, שאלה, תשובה, סימן, סעיף</code>
+          </div>
+          <div class="io-box output">
+            <strong>פלט</strong>
+            Recall@[1,3,5,10,18,30,50], MRR, elapsed_sec, target_passed
+          </div>
+        </div>
+
+        <h3>האלגוריתם</h3>
+        <div class="flow">
+לכל שאלה מ-596:<br>
+<span class="arrow">    ↓</span> שליפת top_100 תוצאות (retrieve_k=100)<br>
+<span class="arrow">    ↓</span> מציאת דירוג הסימן הנכון<br>
+<span class="arrow">    ↓</span> Recall@K: האם הסימן נמצא בK הראשונים?<br>
+<span class="arrow">    ↓</span> MRR: 1/דירוג (או 0 אם לא נמצא)<br>
+<br>
+בסוף: ממוצע על כל 596 השאלות
+        </div>
+
+        <h3>הסבר המדדים</h3>
+
+        <p><strong>Recall@K</strong> — כמה שאלות (באחוזים) הסימן הנכון שלהן נמצא בתוצאות K הראשונות (K נמדד ב-[1,3,5,10,18,30,50]):</p>
+        <ul>
+          <li>Recall@1 = 59% — ב-6/10 שאלות, התוצאה הראשונה נכונה</li>
+          <li>Recall@3 = 79% — ב-8/10 שאלות, אחת מ-3 הראשונות נכונה</li>
+          <li>Recall@5 = 94% — ב-9.4/10 שאלות, אחת מ-5 הראשונות נכונה</li>
+        </ul>
+
+        <p><strong>MRR</strong> (Mean Reciprocal Rank) — ממוצע של 1/דירוג. MRR=0.686 פירושו שהדירוג הממוצע של התשובה הנכונה הוא ~1.46 — כמעט ראשון.</p>
+
+        <p><strong>Granularity</strong>: המערכת סופרת לפי <strong>סימן</strong>, לא סעיף — כי שאלה יכולה להיות רלוונטית למספר סעיפים באותו סימן.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========== SECTION 10 ========== -->
+  <section id="s10">
+    <h2><span class="num">10</span> תהליך 8 — ממשק המשתמש (Chat UI)</h2>
+
+    <div class="process-card">
+      <div class="process-card-header">
+        <span class="step-badge">שלב 6</span>
+        chat-ui/server.py · chat-ui/index.html · chat-ui/api/
+      </div>
+      <div class="process-card-body">
+        <p>ממשק ווב בעברית (RTL) שמאפשר לשאול שאלות, להשוות תשובות עם/בלי RAG, ולראות סטטיסטיקות.</p>
+
+        <h3>הרצה</h3>
+        <pre>cd chat-ui
+python server.py
+# http://localhost:3000</pre>
+
+        <h3>ארכיטקטורת ה-API</h3>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Method</th><th>נתיב</th><th>Handler</th><th>תיאור</th></tr></thead>
+            <tbody>
+              <tr><td>GET</td><td>/</td><td>index.html</td><td>ממשק המשתמש</td></tr>
+              <tr><td>POST</td><td>/api/chat</td><td>api/chat.py</td><td>שאלה → תשובה + chunks</td></tr>
+              <tr><td>GET</td><td>/api/eval</td><td>api/eval.py</td><td>596 שאלות הבנצ'מרק</td></tr>
+              <tr><td>GET</td><td>/api/prompts</td><td>api/prompts.py</td><td>System prompts</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3>POST /api/chat — קלט</h3>
+        <pre>{
+  "messages": [{"role": "user", "content": "מה דין ציצית?"}],
+  "use_rag": true,
+  "top_k": 3
+}</pre>
+
+        <h3>POST /api/chat — מה קורה</h3>
+        <div class="flow">
+קלט מהמשתמש<br>
+<span class="arrow">    ↓</span><br>
+_retriever.retrieve(שאלה, top_k=3)  <span class="note">← singleton ברמת המודול, לא נטען מחדש בכל בקשה</span><br>
+<span class="arrow">    ↓</span> 3 קטעים רלוונטיים<br>
+בניית prompt: [system prompt] + [קטעים] + [שאלה]<br>
+<span class="arrow">    ↓</span><br>
+OpenAI GPT-4o-mini<br>
+<span class="arrow">    ↓</span>
+        </div>
+
+        <h3>POST /api/chat — פלט</h3>
+        <pre>{
+  "reply": "ציצית היא מצות עשה...",
+  "chunks": [
+    {"siman": 8, "seif": 1, "score": 0.87, "text": "..."},
+    {"siman": 9, "seif": 1, "score": 0.81, "text": "..."}
+  ]
+}</pre>
+
+        <h3>שלושת הלשוניות בממשק</h3>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>לשונית</th><th>מה יש בה</th></tr></thead>
+            <tbody>
+              <tr><td>שאלות מאגר</td><td>עיון ב-596 שאלות, סינון לפי סימן</td></tr>
+              <tr><td>השוואה</td><td>שאלה → 2 תשובות (עם RAG / בלי) → הצבעה</td></tr>
+              <tr><td>סטטיסטיקות</td><td>תוצאות הצבעות + גרפים של מדדי שליפה</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========== SECTION 11 ========== -->
+  <section id="s11">
+    <h2><span class="num">11</span> זרימת הנתונים מקצה לקצה</h2>
+
+    <div class="flow" style="font-size:0.8rem; line-height:2.2;">
+<span class="label">[Sefaria API]</span><br>
+<span class="arrow">    ↓</span> build_source_from_sefaria.py<br>
+<span class="file">data/source_original/data_fixed.txt</span><br>
+<span class="arrow">    ↓</span> data/scripts/build_shulchan_aruch_rag.py<br>
+<span class="file">data/processed/shulchan_aruch_rag.json</span><br>
+<span class="arrow">    ↓</span> data/scripts/add_breadcrumb_to_json.py<br>
+<span class="file">data/processed/shulchan_aruch_rag_with_breadcrumb.json</span><br>
+<span class="arrow">    ↓</span> chunker/main.py + config.yaml<br>
+<span class="file">data/chunks_siman.json</span>      <span class="note">(12,500 צ'אנקים, 3 גרסאות)</span><br>
+<span class="arrow">    ↓</span> embedder/embed.py<br>
+<span class="file">embedder/chroma_db/</span>          <span class="note">(12,500 וקטורים 1024-מימדיים)</span><br>
+<span class="arrow">    ↓</span><br>
+────────────────── זמן ריצה ──────────────────<br>
+<span class="arrow">    ↓</span><br>
+<span class="label">שאלה מהמשתמש:</span> <span class="note">"מה דין ציצית?"</span><br>
+<span class="arrow">    ↓</span> encode_query()<br>
+וקטור שאלה (1024,)<br>
+<span class="arrow">    ↓</span> ChromaRetriever.retrieve()<br>
+top-K קטעים רלוונטיים<br>
+<span class="arrow">    ↓</span> chat-ui/api/chat.py<br>
+GPT-4o-mini עם הקשר<br>
+<span class="arrow">    ↓</span><br>
+<span class="label">תשובה מנומקת למשתמש</span>
+    </div>
+  </section>
+
+  <!-- ========== SECTION 12 ========== -->
+  <section id="s12">
+    <h2><span class="num">12</span> תוצאות הניסויים</h2>
+
+    <p>הטבלה הבאה מציגה את הניסוי הטוב ביותר שהושג (ניסוי #028):</p>
+
+    <div class="metrics-grid">
+      <div class="metric-card">
+        <div class="metric-value">63.8%</div>
+        <div class="metric-label">Recall@1</div>
+      </div>
+      <div class="metric-card highlight">
+        <div class="metric-value">80.0%</div>
+        <div class="metric-label">Recall@3 ★</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-value">88.8%</div>
+        <div class="metric-label">Recall@5</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-value">0.727</div>
+        <div class="metric-label">MRR</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-value">596</div>
+        <div class="metric-label">שאלות נבדקו</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-value">4,169</div>
+        <div class="metric-label">סעיפים בקורפוס</div>
+      </div>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>פרמטר</th><th>ערך</th></tr></thead>
+        <tbody>
+          <tr><td>מודל</td><td>intfloat/multilingual-e5-large</td></tr>
+          <tr><td>גרסת טקסט</td><td>Combined (text + סיכום מודרני + שאלות GPT)</td></tr>
+          <tr><td>Retrieval granularity</td><td>unique-siman</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <blockquote>
+      <strong>פרשנות:</strong> ב-8 מתוך 10 שאלות, אחת מ-3 התוצאות הראשונות היא מהסימן הנכון — ביצוע טוב מאוד למשימה בעברית על טקסטים עתיקים.
+    </blockquote>
+  </section>
+
+  <!-- ========== SECTION 13 ========== -->
+  <section id="s13">
+    <h2><span class="num">13</span> ביקורת הקוד — מה לא טוב ועצות לשיפור</h2>
+
+    <p>פרק זה מציג ניתוח ביקורתי של הקוד כפי שהוא היום, מה לא עובד טוב, ועצות לשיפור.</p>
+
+    <h3>13.1 ארכיטקטורה ועקביות</h3>
+
+    <div class="issue-card">
+      <div class="issue-title">⚠️ שלושה Retrievers, שניים מהם מתים</div>
+      <p>יש שלושה מימושי Retriever בקוד: <code>ChromaRetriever</code> (פעיל ומומלץ), <code>NpyRetriever</code> (Legacy, נתיבים קשיחים), ו-<code>SemanticE5SeifV6CombinedRetriever</code> (Legacy, לא מתוחזק). הקוד הישן לא נמחק — מי שיבוא לפרויקט לא יודע מה לבחור.</p>
+      <div class="issue-fix">
+        <strong>עצה:</strong> מחק את <code>npy_retriever.py</code> ו-<code>semantic_e5_seif_v6_combined.py</code>, או העבר ל-<code>retrievers/legacy/</code> עם הערה ברורה.
+      </div>
+    </div>
+
+    <div class="issue-card">
+      <div class="issue-title">⚠️ experiments/exp_main.py ו-main.py זהים לחלוטין</div>
+      <p>שני הקבצים מכילים בדיוק את אותו קוד: load config → build_tables → embed. לא ברור מי "האמיתי" — שכפול מסוכן כי שינויים באחד לא ישתקפו בשני.</p>
+      <div class="issue-fix">
+        <strong>עצה:</strong> מחק את <code>experiments/exp_main.py</code> והשאר רק <code>main.py</code> בשורש כנקודת כניסה יחידה.
+      </div>
+    </div>
+
+    <div class="issue-card">
+      <div class="issue-title">⚠️ main.py בשורש הפרויקט — מיותר</div>
+      <p>הקובץ הוא "Legacy RAG query loop template" ולא משמש לכלום בפועל — ה-UI וה-evaluator הם נקודות הכניסה האמיתיות.</p>
+      <div class="issue-fix">
+        <strong>עצה:</strong> מחק אותו, או הפוך אותו ל-CLI שימושי אמיתי.
+      </div>
+    </div>
+
+    <h3>13.2 ניהול תצורה (Configuration)</h3>
+
+    <div class="issue-card">
+      <div class="issue-title">⚠️ נתיבים קשיחים בכמה מקומות</div>
+      <p>ב-<code>chroma_retriever.py</code>: <code>chroma_dir="embedder/chroma_db"</code> (נתיב יחסי קשיח). אם מישהו מריץ מתיקייה שונה, הכל נשבר.</p>
+      <div class="issue-fix">
+        <strong>עצה:</strong> כל הנתיבים צריכים לבוא מ-<code>config.yaml</code>, ולהיות יחסיים לשורש הפרויקט. השתמש ב-<code>pathlib.Path(__file__).parent.parent / "embedder/chroma_db"</code> כ-fallback.
+      </div>
+    </div>
+
+    <div class="issue-card">
+      <div class="issue-title">⚠️ שני קבצי config ללא הסבר</div>
+      <p><code>config/config.yaml</code> ו-<code>config/config_template.yaml</code> — לא ברור מה ההבדל ביניהם ומי משתמש באיזה.</p>
+      <div class="issue-fix">
+        <strong>עצה:</strong> מחק את ה-template, או הוסף הסבר ברור בראש כל אחד.
+      </div>
+    </div>
+
+    <h3>13.3 ה-Chat UI</h3>
+
+    <div class="issue-card">
+      <div class="issue-title">⚠️ שרת ה-HTTP בנוי ידנית</div>
+      <p>שרת Python ידני עם <code>BaseHTTPRequestHandler</code> — שביר ומסורבל. אין handling של CORS, אין middleware, אין ניהול session.</p>
+      <div class="issue-fix">
+        <strong>עצה:</strong> עבור ל-FastAPI — הכל הופך לפשוט יותר, ומקבלים docs אוטומטי בחינם.
+        <pre style="margin:8px 0 0;">from fastapi import FastAPI
+app = FastAPI()
+
+@app.post("/api/chat")
+async def chat(body: ChatRequest):
+    ...</pre>
+      </div>
+    </div>
+
+    <div class="issue-card">
+      <div class="issue-title">⚠️ OPENAI_API_KEY נטען בצורה שונה בכל מקום</div>
+      <p>ב-<code>server.py</code>: <code>load_dotenv(".env")</code>. ב-<code>chat.py</code>: מניח שה-key כבר ב-environment. חוסר עקביות שמוביל לבאגים.</p>
+      <div class="issue-fix">
+        <strong>עצה:</strong> צור קובץ <code>chat-ui/config.py</code> אחד שמנהל את כל הסביבה — key, model name, top_k.
+      </div>
+    </div>
+
+    <div class="issue-card">
+      <div class="issue-title">⚠️ אין error handling ב-api/chat.py</div>
+      <p>אם ה-ChromaRetriever נכשל (ChromaDB לא קיים, model לא הורד), ה-API קורס ללא הודעת שגיאה ברורה למשתמש.</p>
+      <div class="issue-fix">
+        <strong>עצה:</strong> הוסף try/except ברמת ה-handler ותחזיר <code>{"error": "הסבר"}</code> במקום stack trace גולמי.
+      </div>
+    </div>
+
+    <h3>13.4 מנגנון ה-Embedding</h3>
+
+    <div class="issue-card">
+      <div class="issue-title">⚠️ אין validation שה-prefix נכון</div>
+      <p>המודל E5 דורש <code>"passage: "</code> לפני טקסט ו-<code>"query: "</code> לפני שאלה. אם מישהו קורא ל-<code>encode_query()</code> ידנית בלי להבין זאת, הביצועים יורדים דרמטית — ואין שום אזהרה.</p>
+      <div class="issue-fix">
+        <strong>עצה:</strong> הוסף assertion או לפחות <code>warnings.warn()</code> אם ה-prefix לא מופיע.
+      </div>
+    </div>
+
+    <div class="issue-card">
+      <div class="issue-title">⚠️ אין cache invalidation חכם</div>
+      <p><code>get_existing_type_texts()</code> בודק אם גרסה קיימת ב-ChromaDB, אבל אין hash לכל צ'אנק. אם שינית את הטקסט, לא תדע שצריך להטמיע מחדש.</p>
+      <div class="issue-fix">
+        <strong>עצה:</strong> שמור hash של <code>chunks_siman.json</code> ב-ChromaDB metadata. אם ה-hash השתנה — הטמע מחדש אוטומטית.
+      </div>
+    </div>
+
+    <h3>13.5 הערכה (Evaluation)</h3>
+
+    <div class="issue-card">
+      <div class="issue-title">⚠️ llm_evaluator.py הוא stub שזורק שגיאה</div>
+      <p>הקובץ רשום ב-registry כאילו הוא קיים, אבל <code>evaluate()</code> זורק <code>NotImplementedError</code>. מי שינסה להשתמש בו יקבל שגיאה בלתי-ברורה.</p>
+      <div class="issue-fix">
+        <strong>עצה:</strong> הסר מה-registry עד שיהיה מימוש, או הוסף comment ברור: "WIP — לא להשתמש".
+      </div>
+    </div>
+
+    <div class="issue-card">
+      <div class="issue-title">⚠️ מקור שאלות הבנצ'מרק לא מתועד</div>
+      <p>596 שאלות ב-<code>sa_eval.csv</code> — האם נוצרו ידנית? על ידי GPT? על ידי בני אדם? זה קריטי להבין את איכות ה-benchmark.</p>
+      <div class="issue-fix">
+        <strong>עצה:</strong> תעד את מקור השאלות ב-README של <code>data/eval/</code>.
+      </div>
+    </div>
+
+    <h3>13.6 תיעוד וניקיון</h3>
+
+    <div class="issue-card">
+      <div class="issue-title">⚠️ CLAUDE.md בתוך chunker/ במקום הלא נכון</div>
+      <p>קובץ הגדרות ל-Claude Code הוא לא תיעוד פרויקט. הוא לא שייך לתוך <code>chunker/</code> ועלול לבלבל תורמים.</p>
+      <div class="issue-fix">
+        <strong>עצה:</strong> העבר ל-<code>.claude/</code> בשורש הפרויקט.
+      </div>
+    </div>
+
+    <div class="issue-card">
+      <div class="issue-title">⚠️ cache files גדולים ב-data/ שלא ברור מה מצבם</div>
+      <p><code>seif_questions_gpt_cache.json</code> ו-<code>seif_modern_summary_cache.json</code> — האם עוד משתמשים בהם?</p>
+      <div class="issue-fix">
+        <strong>עצה:</strong> אם לא בשימוש — מחק. אם כן — תעד מאיפה הגיעו ואיך נוצרו.
+      </div>
+    </div>
+
+    <h3>13.7 ביצועים</h3>
+
+    <div class="issue-card" style="border-color: #bbf7d0;">
+      <div class="issue-title" style="color: #16a34a;">✅ Retriever כ-singleton — כבר מיושם נכון</div>
+      <p><code>chat.py</code> מגדיר את ה-Retriever ברמת המודול, פעם אחת בלבד בעת אתחול:</p>
+      <pre style="margin:8px 0;">_retriever = get_retriever("chroma", type_text="text+hagah")</pre>
+      <p>המודל נטען פעם אחת ולא מחדש בכל בקשה — דפוס נכון לחלוטין.</p>
+    </div>
+
+    <div class="issue-card">
+      <div class="issue-title">⚠️ batch_size קשיח ב-embed.py</div>
+      <p><code>batch_size: 32</code> בקובץ config. מכונות עם GPU שונות צריכות גדלים שונים — על CPU זה אולי גדול מדי, על GPU חזקה קטן מדי.</p>
+      <div class="issue-fix">
+        <strong>עצה:</strong> חשב batch_size אוטומטית לפי זיכרון זמין, או לפחות תעד את הסיבה ל-32.
+      </div>
+    </div>
+
+    <hr>
+
+    <h3>סיכום — מה לתקן לפי עדיפות</h3>
+
+    <div class="table-wrap">
+      <table class="priority-table">
+        <thead><tr><th>עדיפות</th><th>בעיה</th><th>קושי</th></tr></thead>
+        <tbody>
+          <tr>
+            <td>🔴</td>
+            <td>הסר Legacy Retrievers</td>
+            <td><span class="badge badge-green">קל</span></td>
+          </tr>
+          <tr>
+            <td>🔴</td>
+            <td>error handling ב-chat.py</td>
+            <td><span class="badge badge-green">קל</span></td>
+          </tr>
+          <tr>
+            <td>🟡</td>
+            <td>עבור מ-server.py ל-FastAPI</td>
+            <td><span class="badge badge-yellow">בינוני</span></td>
+          </tr>
+          <tr>
+            <td>🟡</td>
+            <td>כל הנתיבים מ-config בלבד</td>
+            <td><span class="badge badge-yellow">בינוני</span></td>
+          </tr>
+          <tr>
+            <td>🟡</td>
+            <td>תעד את מקור שאלות הבנצ'מרק</td>
+            <td><span class="badge badge-green">קל</span></td>
+          </tr>
+          <tr>
+            <td>🟢</td>
+            <td>hash-based cache invalidation</td>
+            <td><span class="badge badge-red">קשה</span></td>
+          </tr>
+          <tr>
+            <td>🟢</td>
+            <td>LLMEvaluator מימוש אמיתי</td>
+            <td><span class="badge badge-red">קשה</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ========== SECTION 14 ========== -->
+  <section id="s14">
+    <h2><span class="num">14</span> Quick Start — הרצה מאפס</h2>
+
+    <h3>דרישות מקדימות</h3>
+    <pre>pip install -r requirements.txt</pre>
+    <p>כולל: <code>sentence-transformers</code>, <code>chromadb</code>, <code>openai</code>, <code>pandas</code>, <code>pyyaml</code>, <code>tqdm</code></p>
+
+    <h3>שלב 0 — הטקסט כבר קיים</h3>
+    <p>הטקסט הגולמי (<code>data/source_original/data_fixed.txt</code>) כבר בפרויקט. אם צריך להוריד מחדש:</p>
+    <pre>python build_source_from_sefaria.py
+# → data/source_original/data_fixed.txt</pre>
+
+    <h3>שלב 1 — עיבוד הטקסט</h3>
+    <pre>python data/scripts/build_shulchan_aruch_rag.py
+# → data/processed/shulchan_aruch_rag.json
+
+python data/scripts/add_breadcrumb_to_json.py
+# → data/processed/shulchan_aruch_rag_with_breadcrumb.json</pre>
+
+    <h3>שלב 2 — יצירת צ'אנקים</h3>
+    <pre>python chunker/main.py
+# קורא מ: data/processed/shulchan_aruch_rag_with_breadcrumb.json
+# → data/chunks.json  (3 גרסאות × 4,169 סעיפים)</pre>
+
+    <h3>שלב 3 — הטמעת וקטורים</h3>
+    <pre>python embedder/embed.py --chunks data/chunks.json
+# הורדת המודל בפעם הראשונה: ~2GB, ~15 דקות
+# קידוד: ~30 דקות על CPU, ~5 דקות על GPU
+# → embedder/chroma_db/</pre>
+    <div class="callout callout-info">
+      <span class="callout-icon">ℹ️</span>
+      <span>אם גרסה כבר קיימת ב-ChromaDB, השלב מדולג אוטומטית. ניתן לציין גם <code>--model</code>, <code>--chroma-dir</code>, <code>--batch-size</code>.</span>
+    </div>
+
+    <h3>שלב 4 — הרצת הממשק</h3>
+    <pre>cd chat-ui
+cp .env.example .env      # הכנס OPENAI_API_KEY
+python server.py
+# → http://localhost:3000</pre>
+
+    <h3>שלב 5 — הרצת הערכה (אופציונלי)</h3>
+    <pre>from retrievers import get_retriever
+from evaluation import get_evaluator
+import pandas as pd
+
+retriever = get_retriever("chroma", type_text="text+hagah")
+evaluator = get_evaluator("retrieval")
+df = pd.read_csv("data/eval/sa_eval.csv")
+result = evaluator.evaluate(retriever, df)
+print(evaluator.format_report(result))</pre>
+  </section>
+
+  <!-- ========== SECTION 15 ========== -->
+  <section id="s15">
+    <h2><span class="num">15</span> הוספת Retriever חדש</h2>
+
+    <p>המערכת בנויה כך שניתן להוסיף Retriever חדש בשלושה צעדים.</p>
+
+    <h3>שלב 1 — צור את הקלאס</h3>
+    <pre># retrievers/my_retriever.py
+from .base import BaseRetriever
+import numpy as np
+from pathlib import Path
+from sentence_transformers import SentenceTransformer
+
+class MyRetriever(BaseRetriever):
+    @property
+    def name(self) -> str:
+        return "my_retriever"
+
+    def __init__(self, **_ignored):
+        self._model = self._embeddings = self._chunks = None
+
+    def _load(self):
+        if self._model:
+            return
+        self._model = SentenceTransformer("intfloat/multilingual-e5-large")
+        base = Path(__file__).resolve().parent.parent
+        self._embeddings = np.load(str(base / "MY_EMBEDDINGS.npy"))
+        import json
+        with open(base / "MY_CHUNKS.json", encoding="utf-8") as f:
+            self._chunks = json.load(f)
+
+    def retrieve(self, query: str, top_k: int = 10) -> list[dict]:
+        self._load()
+        qvec = self._model.encode("query: " + query, normalize_embeddings=True)
+        scores = self._embeddings @ qvec
+        top_idx = np.argsort(scores)[-top_k:][::-1]
+        return [
+            {
+                "rank": r + 1,
+                "chunk_id": self._chunks[i].get("chunk_id", i),
+                "score": round(float(scores[i]), 4),
+                "text": self._chunks[i]["text"],
+                "siman_parent": self._chunks[i].get("siman", 0),
+                "siman": self._chunks[i].get("siman", 0),
+                "seif": self._chunks[i].get("seif", 0),
+            }
+            for r, i in enumerate(top_idx)
+        ]</pre>
+
+    <h3>שלב 2 — רשום ב-Registry</h3>
+    <pre># retrievers/__init__.py — הוסף:
+from .my_retriever import MyRetriever
+REGISTRY["my_retriever"] = MyRetriever</pre>
+
+    <h3>שלב 3 — הרץ הערכה</h3>
+    <pre>from retrievers import get_retriever
+from evaluation import get_evaluator
+import pandas as pd
+
+r = get_retriever("my_retriever")
+evaluator = get_evaluator("retrieval")
+df = pd.read_csv("data/eval/sa_eval.csv")
+result = evaluator.evaluate(r, df)
+print(evaluator.format_report(result))</pre>
+
+    <div class="callout callout-tip">
+      <span class="callout-icon">💡</span>
+      <span><code>**_ignored</code> ב-<code>__init__</code> חשוב — <code>get_retriever()</code> מעביר kwargs שלא כל retriever מכיר. <code>_load()</code> lazy pattern מונע טעינת המודל עד לשאילתה הראשונה.</span>
+    </div>
+  </section>
+
+  <!-- ========== SECTION 16 ========== -->
+  <section id="s16">
+    <h2><span class="num">16</span> ציר הזמן של הניסויים — מה עבד ומה לא</h2>
+
+    <h3>28 ניסויים בקצרה</h3>
+    <div class="flow" style="font-size:0.8rem; line-height:2;">
+exp_001–003: E5-small → E5-large              R@3: 34% → 38%<br>
+exp_004–009: ניקוי טוב יותר + chunking שונה  R@3: 38% → 56%<br>
+exp_010–011: הוספת context_prefix + סיכום GPT R@3: 60%<br>
+exp_012–013: פיצול לסעיפים (4,169 סעיפים)    R@3: 60.4%<br>
+<span class="note">─────── גילוי: exp_001–021 נמדדו עם באג! ───────</span><br>
+exp_022: תיקון extract_siman (גרש)            R@3: 60.4% → 74.66% <span class="label">(+14%!!)</span><br>
+exp_023: HyDE (GPT מייצר השערה)              R@3: 69.1%  ✗<br>
+exp_024: Doc2Query (שאלות מבוססות-כללים)     R@3: 75.84%<br>
+exp_025: שאלות GPT מומחה                     R@3: 78.02% ★<br>
+exp_026: סיכום מודרני בעברית (GPT)            R@3: 78.02%, R@10: 90.10% ★<br>
+exp_027: BGE אנגלית + תרגום                   R@3: 62.25% ✗✗<br>
+<span class="file">exp_028: Combined (סיכום + שאלות)            R@3: 80.03% ★★★</span>
+    </div>
+
+    <h3>הבאג הגדול של exp_022</h3>
+    <p>בניסויים 1–21 (בפרויקט הישן), פונקציית <code>extract_siman</code> שברה על מספרי גימטריה עם גרש:</p>
+    <pre># BROKEN: תרמ"ג → 640 (במקום 643) — regex עצר בגרש
+re.findall(r"[א-ת]+", 'תרמ"ג')
+
+# FIXED:
+re.findall(r'[א-ת"\'׳״]+', 'תרמ"ג')</pre>
+    <div class="callout callout-warn">
+      <span class="callout-icon">⚠️</span>
+      <span>כשתוקן הבאג, כל המדדים קפצו ב-13% בבת אחת — לא כי המערכת השתפרה, אלא כי ההערכה עצמה הייתה שגויה. הקוד הנוכחי קורא <code>int(row.siman)</code> ישירות מה-CSV, ללא parsing גימטריה.</span>
+    </div>
+
+    <h3>exp_028 — ה-Combined שהצליח</h3>
+    <p>כל סעיף מוטמע עם שלוש שכבות מידע:</p>
+    <pre>encoding_text = context_prefix + text + modern_summary + gpt_questions
+
+דוגמה — סימן 4, סעיף 1:
+┌──────────────────────────────────────────────────────────────┐
+│ Shulchan Arukh, Orach Chayim, Siman 4, Seif 1:              │ ← עוגן
+│ ישתדל אדם לעמוד בבוקר כארי לעבודת בוראו...                  │ ← טקסט מקורי
+│ יש לקום בבוקר בזריזות לעבודת ה'...                           │ ← סיכום GPT
+│ מתי יש לקום? מדוע נדרשת זריזות?                              │ ← שאלות GPT
+└──────────────────────────────────────────────────────────────┘
+ממוצע: 162 מילים/סעיף (לעומת 44 מילים בבסיס)</pre>
+
+    <h3>טבלת כל הניסויים</h3>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>ניסוי</th><th>שיטה</th><th>R@1</th><th>R@3</th><th>R@10</th><th>MRR</th></tr></thead>
+        <tbody>
+          <tr><td>001</td><td>E5-small</td><td>22.9%</td><td>34.1%</td><td>48.7%</td><td>0.286</td></tr>
+          <tr><td>013 ⚠️</td><td>E5-seif (עם באג)</td><td>48.0%</td><td>60.4%</td><td>73.0%</td><td>0.557</td></tr>
+          <tr><td><strong>022</strong></td><td>E5-seif (תוקן)</td><td>59.23%</td><td>74.66%</td><td>88.93%</td><td>0.686</td></tr>
+          <tr><td>023</td><td>HyDE</td><td>51.2%</td><td>69.1%</td><td>82.6%</td><td>0.616</td></tr>
+          <tr><td>024</td><td>Doc2Query</td><td>61.24%</td><td>75.84%</td><td>87.58%</td><td>0.698</td></tr>
+          <tr><td>025</td><td>שאלות GPT</td><td>63.42%</td><td>78.02%</td><td>88.59%</td><td>0.719</td></tr>
+          <tr><td>026</td><td>סיכום מודרני</td><td>63.26%</td><td>78.02%</td><td><strong>90.10%</strong></td><td>0.721</td></tr>
+          <tr><td>027</td><td>BGE אנגלית ✗</td><td>45.64%</td><td>62.25%</td><td>74.50%</td><td>0.554</td></tr>
+          <tr style="background:#eff6ff;"><td><strong>028 ★</strong></td><td><strong>Combined</strong></td><td><strong>63.76%</strong></td><td><strong>80.03%</strong></td><td>88.76%</td><td><strong>0.727</strong></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p style="font-size:0.8rem; color:var(--muted);">⚠️ exp_001–021: ערכים נמוכים ב-~13% בגלל באג ב-extract_siman (פרויקט ישן).</p>
+
+    <h3>מה עצר אותנו ב-80%?</h3>
+    <ul>
+      <li><strong>סימנים דלי-תוכן</strong>: סימן 620 = 15 מילים בסך הכל — הוקטור "חלש"</li>
+      <li><strong>סימן 4 (נטילת ידיים)</strong>: 15+ סעיפים עם תוכן דומה מאוד — המודל מבלבל ביניהם</li>
+      <li><strong>57 שאלות</strong> שכנראה דורשות fine-tuning ספציפי לתחום</li>
+    </ul>
+    <div class="callout callout-tip">
+      <span class="callout-icon">💡</span>
+      <span><strong>הצעד הבא המומלץ</strong>: Fine-tune של מודל E5 על זוגות שאלה–סעיף ספציפיים לשולחן ערוך.</span>
+    </div>
+  </section>
+
+  <!-- ========== SECTION 16 ========== -->
+  <section id="s17">
+    <h2><span class="num">17</span> מודל E5 — למה דווקא הוא?</h2>
+
+    <h3>השוואת מודלים שנוסו</h3>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>מודל</th><th>R@3</th><th>הסיבה לכישלון</th></tr></thead>
+        <tbody>
+          <tr><td>E5-small</td><td>34%</td><td>קטן מדי (118M פרמטרים)</td></tr>
+          <tr><td>mBERT</td><td>12%</td><td>אינו sentence encoder — ארכיטקטורה לא מתאימה לדמיון</td></tr>
+          <tr><td>heBERT</td><td>35%</td><td>ספציפי לעברית אבל גם אינו sentence encoder</td></tr>
+          <tr><td>DictaBERT</td><td>35%</td><td>אותה בעיה כמו heBERT</td></tr>
+          <tr><td>BGE-large-en</td><td>62%</td><td>אנגלית בלבד — תרגום מאבד ניואנס הלכתי</td></tr>
+          <tr style="background:#eff6ff;"><td><strong>E5-large ★</strong></td><td><strong>80%</strong></td><td>Multilingual sentence encoder, 1024 מימדים, cross-lingual alignment</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>מה מיוחד ב-E5?</h3>
+    <p>E5 (<em>Embeddings from bidirEctional Encoder representations</em>) פותח על ידי Microsoft Research. הוא אומן על מיליארדי זוגות טקסט ב-100+ שפות בשיטת <strong>Contrastive Learning</strong> — המודל לומד לקרב וקטורים של passage ושאלה רלוונטיים, ולהרחיק אחרים.</p>
+
+    <h3>הסבר ה-prefix החובה</h3>
+    <pre># ✅ נכון:
+model.encode("passage: " + seif_text)   # לטקסטים
+model.encode("query: "   + question)    # לשאלות
+
+# ❌ שגוי — ביצועים יורדים משמעותית:
+model.encode(seif_text)
+model.encode(question)</pre>
+    <p>E5 אומן עם ה-prefix הזה — הוא מסמן למודל אם הטקסט הוא "מסמך לחיפוש" או "שאלה שחיפשים". ללא ה-prefix, ה-alignment נשבר.</p>
+
+    <h3>נורמליזציה וחיפוש מהיר</h3>
+    <pre>model.encode(..., normalize_embeddings=True)
+# → וקטור L2-normalized (אורך 1)
+# → cosine similarity = dot product
+# → ניתן לחשב: scores = embeddings @ query_vec  (מטריצה × וקטור)</pre>
+
+    <h3>אפשרויות להמשך</h3>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>אפשרות</th><th>פוטנציאל</th><th>קושי</th></tr></thead>
+        <tbody>
+          <tr><td>Fine-tune E5 על שאלות–סעיפים</td><td><span class="badge badge-red">גבוה</span></td><td><span class="badge badge-red">גבוה</span></td></tr>
+          <tr><td>Reranker (cross-encoder) אחרי E5</td><td><span class="badge badge-yellow">בינוני</span></td><td><span class="badge badge-green">קל</span></td></tr>
+          <tr><td>BM25 Hybrid (מילות מפתח + סמנטי)</td><td><span class="badge badge-yellow">בינוני</span></td><td><span class="badge badge-green">קל</span></td></tr>
+          <tr><td>ColBERT (late interaction)</td><td><span class="badge badge-yellow">בינוני</span></td><td><span class="badge badge-yellow">בינוני</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ========== SECTION 17 ========== -->
+  <section id="s18">
+    <h2><span class="num">18</span> Troubleshooting — שגיאות נפוצות ופתרונות</h2>
+
+    <div class="issue-card">
+      <div class="issue-title" style="color:#1d4ed8;">🔵 ChromaDB לא נמצא</div>
+      <pre>FileNotFoundError: ChromaDB not found at embedder/chroma_db</pre>
+      <div class="issue-fix"><strong>פתרון:</strong> יש להריץ קודם את שלב ההטמעה:
+        <pre style="margin-top:6px;">python embedder/embed.py --chunks data/chunks.json</pre>
+      </div>
+    </div>
+
+    <div class="issue-card">
+      <div class="issue-title" style="color:#1d4ed8;">🔵 המודל לא הורד</div>
+      <pre>OSError: Can't load model 'intfloat/multilingual-e5-large'</pre>
+      <div class="issue-fix"><strong>פתרון:</strong> נדרש חיבור אינטרנט בהורדה הראשונה (~2GB). הרץ:
+        <pre style="margin-top:6px;">python -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('intfloat/multilingual-e5-large')"</pre>
+        המודל נשמר ב-<code>~/.cache/huggingface/</code> ולא מורד שוב.
+      </div>
+    </div>
+
+    <div class="issue-card">
+      <div class="issue-title" style="color:#1d4ed8;">🔵 חסר OPENAI_API_KEY</div>
+      <pre>openai.AuthenticationError: No API key provided</pre>
+      <div class="issue-fix"><strong>פתרון:</strong> צור <code>chat-ui/.env</code>:
+        <pre style="margin-top:6px;">OPENAI_API_KEY=sk-...
+OPENAI_MODEL=gpt-4o-mini   # אופציונלי</pre>
+      </div>
+    </div>
+
+    <div class="issue-card">
+      <div class="issue-title" style="color:#1d4ed8;">🔵 גרסה חדשה לא נקלטת ב-ChromaDB</div>
+      <p>הוספת <code>type_text</code> חדש ל-config אבל הוא לא מופיע בתוצאות.</p>
+      <div class="issue-fix"><strong>פתרון:</strong> ודא שהגרסה אכן קיימת:
+        <pre style="margin-top:6px;">python -c "
+from embedder.embed import get_existing_type_texts
+from pathlib import Path
+print(get_existing_type_texts(Path('embedder/chroma_db'), 'shulchan_arukh_seifs'))
+"</pre>
+        אם חסרה — הרץ שוב את שלב ההטמעה.
+      </div>
+    </div>
+
+    <div class="issue-card">
+      <div class="issue-title" style="color:#1d4ed8;">🔵 רוצה לאפס את ChromaDB ולהטמיע מחדש</div>
+      <div class="issue-fix">
+        <pre>rm -rf embedder/chroma_db/
+python embedder/embed.py --chunks data/chunks.json</pre>
+      </div>
+    </div>
+  </section>
+
+
+
+  <footer>
+    מסמך זה נוצר ב-11 במאי 2026 על בסיס קריאה מלאה של כל קבצי הפרויקט · rag_shul
+  </footer>
+
+</div>
+</body>
+</html>
