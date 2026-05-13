@@ -1212,4 +1212,220 @@ python -m embedder.embed --chunks data/chunks.json
 
 ---
 
+## 19. שכבת ה-UI — ניתוח טכני מלא
+
+### מבנה הקבצים
+
+```
+chat-ui/
+├── server.py          ← שרת Python המריץ הכול
+├── index.html         ← ממשק גרפי (HTML/CSS/JS, קובץ יחיד)
+├── .env               ← משתני סביבה (OPENAI_API_KEY וכו')
+├── .env.example       ← תבנית
+└── api/
+    ├── chat.py        ← handler לבקשות POST /api/chat
+    └── eval.py        ← handler לבקשות GET /api/eval
+```
+
+---
+
+### ארכיטקטורת השרת
+
+`server.py` יוצר מחלקה `LocalHandler` שיורשת בו-זמנית מ-`ChatHandler` ו-`SimpleHTTPRequestHandler`:
+
+```
+GET  /              → index.html (קובץ סטטי)
+POST /api/chat      → api/chat.py → handler.do_POST()
+GET  /api/eval      → api/eval.py → handler.do_GET()
+```
+
+בנוסף, `server.py` טוען אוטומטית את `.env` בעלייה, כך שאין צורך להגדיר משתני סביבה ב-shell בנפרד.
+
+---
+
+### ה-Retriever: בדיוק איזה קובץ ואיזה גרסה?
+
+זו השאלה הכי חשובה טכנית. בשורה 26 של `chat-ui/api/chat.py`:
+
+```python
+_retriever = get_retriever("chroma", type_text="text+hagah")
+```
+
+זה **singleton ברמת המודול** — נוצר פעם אחת כשהשרת עולה, ולא נטען מחדש בכל בקשה.
+
+#### מה זה בדיוק?
+
+| פרמטר | ערך | משמעות |
+|-------|-----|---------|
+| retriever | `"chroma"` | `ChromaRetriever` מ-`retrievers/chroma_retriever.py` |
+| `type_text` | `"text+hagah"` | גרסת הטקסט: עיקר + הגה (הערות הרמ"א) |
+| `chroma_dir` | `embedder/chroma_db/` | תיקיית ChromaDB על הדיסק |
+| `collection_name` | `"shulchan_arukh_seifs"` | שם ה-collection בתוך ChromaDB |
+| `model` | `"intfloat/multilingual-e5-large"` | מודל ההטמעה |
+| `prefix_query` | `"query: "` | קידומת E5 לשאילתות |
+
+#### מסלול הקובץ המלא
+
+```
+embedder/chroma_db/          ← תיקיית ChromaDB (נוצרת ע"י embedder/embed.py)
+└── chroma.sqlite3           ← בסיס הנתונים
+    └── collection: shulchan_arukh_seifs
+        └── type_text = "text+hagah"   ← הגרסה שנשלפת
+```
+
+#### למה `text+hagah` ולא גרסה אחרת?
+
+גרסת `text+hagah` מכילה את עיקר הטקסט של השולחן ערוך **יחד עם הגה של הרמ"א** (פסיקת אשכנז). זו הגרסה העשירה ביותר — היא מכסה גם שיטת ספרד וגם שיטת אשכנז בתוך קטע אחד. הגרסאות האחרות:
+- `text_only` — עיקר בלי הגה
+- `text+hilchot_group` — עיקר + שם הנושא של הסימן
+
+#### טעינה עצלה (Lazy Load)
+
+הבנייה (`__init__`) לא טוענת את המודל. הטעינה האמיתית קורית בקריאה הראשונה ל-`retrieve()`:
+
+```python
+def _load(self):
+    if self._model is not None:
+        return          # כבר טעון — לא עושה כלום
+    self._model = _get_model(self._model_name)   # ~1.5GB ב-RAM
+    client = chromadb.PersistentClient(...)
+    self._collection = client.get_collection(...)
+```
+
+**תוצאה**: הבקשה הראשונה אחרי הפעלת השרת לוקחת כמה שניות. כל הבקשות הבאות — מיידיות.
+
+---
+
+### זרימת בקשה מלאה — POST /api/chat
+
+```
+לקוח HTTP
+    │
+    ▼
+do_POST() ב-ChatHandler
+    │
+    ├─ _read_json()          ← קריאת גוף הבקשה (Content-Length)
+    ├─ _clean_messages()     ← סינון וולידציה:
+    │       MAX_MESSAGES = 12       (לא שולחים יותר מ-12 הודעות אחורה)
+    │       MAX_CONTENT_CHARS = 4000  (חיתוך לכל הודעה)
+    │       רק roles: "user" / "assistant"
+    │
+    ├─ [use_rag=True]
+    │       _retriever.retrieve(last_question, top_k=top_k)
+    │           │
+    │           ├─ encode_query("query: " + שאלה) → וקטור 1024-dim
+    │           └─ ChromaDB cosine similarity → K קטעים מ-text+hagah
+    │
+    ├─ בניית system prompt:
+    │       SYSTEM_PROMPT + "קטעים רלוונטיים:\n" + קטעים
+    │
+    ├─ OpenAI API:
+    │       model    = OPENAI_MODEL env var  (ברירת מחדל: "gpt-4o-mini")
+    │       temp     = 0.35
+    │       max_tok  = 1200
+    │       messages = [system] + messages_מנוקים
+    │
+    └─ תשובה:
+            {"reply": "...", "chunks": [{siman, seif, score, text}, ...]}
+```
+
+#### פרמטרי ה-K
+
+| מי קובע | ערך |
+|---------|-----|
+| ברירת מחדל בקוד | `RETRIEVER_TOP_K = 3` |
+| שדה `top_k` בבקשה | 1–20 (מוגבל ב-`max(1, min(int(...), 20))`) |
+| בחירה בממשק | dropdown: 1, 3, 5, 10 |
+
+---
+
+### נתוני הבנצ'מרק — GET /api/eval
+
+```python
+EVAL_CSV = Path(__file__).resolve().parents[2] / "data" / "eval" / "sa_eval.csv"
+```
+
+**מסלול מוחלט**: `data/eval/sa_eval.csv` (ביחס לשורש הפרויקט)
+
+הקובץ מכיל ~596 שורות עם עמודות: `#, שאלה, תשובה, סימן, סעיף`
+
+ה-handler טוען את הקובץ פעם אחת (`_cache`) ומחזיר JSON:
+```json
+[
+  {"id": "1", "question": "...", "answer": "...", "siman": "8", "seif": "1"},
+  ...
+]
+```
+
+---
+
+### הממשק הגרפי — שלוש הלשוניות
+
+#### לשונית "שאלות מאגר" (Eval Tab)
+
+- טוענת את כל 596 השאלות מ-`/api/eval` בעלייה
+- חיפוש חי עם debounce של 200ms
+- עמוד 50 שאלות בעמוד (PAGE_SIZE)
+- כפתור "השווה" עובר ישירות ללשונית ההשוואה עם השאלה, התשובה המקורית, והסימן הצפוי
+
+#### לשונית "השוואה" (Compare Tab)
+
+- שולחת **שתי בקשות במקביל** (`Promise.allSettled`):
+  - `use_rag: false` → GPT בלי הקשר
+  - `use_rag: true` → GPT עם K קטעים מהשולחן ערוך
+- מציגה את שתי התשובות זה לצד זה
+- **כפתור "צ'אנקים"** — modal עם הקטעים שנשלפו, כולל סימן/סעיף וציון cosine
+- **מטריקות Recall@K ו-MRR** — מחושבות client-side:
+  ```
+  expected_siman  = הסימן הצפוי (אם הגיע מלשונית הבנצ'מרק)
+  rank            = מיקום הסימן הצפוי ברשימת הקטעים
+  recall@K        = found ? 1 : 0
+  MRR             = found ? 1/rank : 0
+  ```
+- הצבעה: שלוש אפשרויות — RAG עדיף / ללא RAG עדיף / שווה
+
+#### לשונית "סטטיסטיקות" (Stats Tab)
+
+- כל הנתונים שמורים ב-`localStorage`:
+  - `ragCompareStats` — ספירות הצבעות + Recall/MRR מצטבר
+  - `ragSeenRecall` — מניעת ספירה כפולה לאותה שאלה
+  - `ragSeenVote` — מניעת הצבעה כפולה
+- גרפי עמודה: RAG עדיף / ללא RAG עדיף / שווה
+- טבלת מטריקות retrieval: Recall@K + MRR ממוצע
+
+---
+
+### הגדרות סביבה
+
+| משתנה | חובה | ברירת מחדל | תיאור |
+|-------|------|------------|-------|
+| `OPENAI_API_KEY` | כן | — | מפתח API של OpenAI |
+| `OPENAI_MODEL` | לא | `gpt-4o-mini` | שם המודל |
+
+הוגדרים ב-`chat-ui/.env` (נטענים אוטומטית ע"י `server.py`).
+
+---
+
+### איך כדאי להשתמש ולשפר
+
+#### המלצות שימוש נוכחי
+
+1. **להתחיל עם K=3** — ניסוי אמפירי מראה שמעל 5 קטעים שומן ה-prompt ופוגע בדיוק
+2. **לשלב עם לשונית הבנצ'מרק** — בחירת שאלה משם מפעילה מדידת Recall אוטומטית
+3. **לראות את הצ'אנקים תמיד** — הם מגלים אם השליפה הצליחה לפני שמנתחים את התשובה
+
+#### שיפורים מומלצים
+
+| בעיה | מה קורה היום | פתרון מוצע |
+|------|-------------|-------------|
+| **אין streaming** | המשתמש מחכה עד קבלת כל התשובה | `stream=True` ב-OpenAI + SSE/chunked response |
+| **RAG רק על הודעה אחרונה** | שאלת המשך לא מנצלת הקשר השיחה | שדה שאלה מורחב = concat היסטוריה + שאלה אחרונה |
+| **top_k קשיח ב-UI** | dropdown עם 4 אפשרויות בלבד | slider 1-20 |
+| **אין בחירת type_text ב-UI** | תמיד `text+hagah` | dropdown לבחירת גרסת הטקסט |
+| **SYSTEM_PROMPT קשיח בקוד** | לא ניתן לשנות ללא עריכת קוד | ממשק עריכת prompt בממשק עצמו |
+| **MRR מחושב ברמת סימן בלבד** | לא מביא בחשבון את הסעיף | הרחבת הזיהוי גם לסעיף |
+| **localStorage בלבד** | נתונים אובדים בניקוי browser | שמירה ב-backend ב-SQLite קטן |
+
+---
+
 *מסמך זה נוצר ב-2026-05-11 על בסיס קריאה מלאה של כל קבצי הפרויקט.*

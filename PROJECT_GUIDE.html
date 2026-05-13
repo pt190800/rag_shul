@@ -474,6 +474,7 @@
       <li><a href="#s16">ציר הזמן של הניסויים — מה עבד ומה לא</a></li>
       <li><a href="#s17">מודל E5 — למה דווקא הוא?</a></li>
       <li><a href="#s18">Troubleshooting — שגיאות נפוצות</a></li>
+      <li><a href="#s19">שכבת ה-UI — ניתוח טכני מלא</a></li>
     </ol>
   </div>
 
@@ -1559,6 +1560,156 @@ python embedder/embed.py --chunks data/chunks.json</pre>
   </section>
 
 
+
+  <!-- ========== SECTION 19 ========== -->
+  <section id="s19">
+    <h2><span class="num">19</span> שכבת ה-UI — ניתוח טכני מלא</h2>
+
+    <h3>מבנה הקבצים</h3>
+    <pre>chat-ui/
+├── server.py          ← שרת Python המריץ הכול
+├── index.html         ← ממשק גרפי (HTML/CSS/JS, קובץ יחיד)
+├── .env               ← משתני סביבה (OPENAI_API_KEY וכו')
+├── .env.example       ← תבנית
+└── api/
+    ├── chat.py        ← handler לבקשות POST /api/chat
+    └── eval.py        ← handler לבקשות GET /api/eval</pre>
+
+    <h3>ארכיטקטורת השרת</h3>
+    <p><code>server.py</code> יוצר מחלקה <code>LocalHandler</code> שיורשת בו-זמנית מ-<code>ChatHandler</code> ו-<code>SimpleHTTPRequestHandler</code>:</p>
+    <pre>GET  /              → index.html (קובץ סטטי)
+POST /api/chat      → api/chat.py → handler.do_POST()
+GET  /api/eval      → api/eval.py → handler.do_GET()</pre>
+    <p><code>server.py</code> טוען אוטומטית את <code>.env</code> בעלייה — אין צורך להגדיר משתני סביבה ב-shell בנפרד.</p>
+
+    <h3>ה-Retriever: בדיוק איזה קובץ ואיזה גרסה?</h3>
+    <p>בשורה 26 של <code>chat-ui/api/chat.py</code>:</p>
+    <pre>_retriever = get_retriever("chroma", type_text="text+hagah")</pre>
+    <p>זהו <strong>singleton ברמת המודול</strong> — נוצר פעם אחת כשהשרת עולה, לא נטען מחדש בכל בקשה.</p>
+
+    <table>
+      <thead><tr><th>פרמטר</th><th>ערך</th><th>משמעות</th></tr></thead>
+      <tbody>
+        <tr><td>retriever</td><td><code>"chroma"</code></td><td>ChromaRetriever מ-retrievers/chroma_retriever.py</td></tr>
+        <tr><td>type_text</td><td><code>"text+hagah"</code></td><td>גרסת הטקסט: עיקר + הגה (הערות הרמ"א)</td></tr>
+        <tr><td>chroma_dir</td><td><code>embedder/chroma_db/</code></td><td>תיקיית ChromaDB על הדיסק</td></tr>
+        <tr><td>collection_name</td><td><code>"shulchan_arukh_seifs"</code></td><td>שם ה-collection בתוך ChromaDB</td></tr>
+        <tr><td>model</td><td><code>"intfloat/multilingual-e5-large"</code></td><td>מודל ההטמעה (1024-dim)</td></tr>
+        <tr><td>prefix_query</td><td><code>"query: "</code></td><td>קידומת E5 לשאילתות</td></tr>
+      </tbody>
+    </table>
+
+    <h3>מסלול הקובץ המלא</h3>
+    <pre>embedder/chroma_db/          ← תיקיית ChromaDB (נוצרת ע"י embedder/embed.py)
+└── chroma.sqlite3
+    └── collection: shulchan_arukh_seifs
+        └── type_text = "text+hagah"   ← הגרסה שנשלפת</pre>
+
+    <div class="callout callout-tip">
+      <span class="callout-icon">💡</span>
+      <span><strong>למה <code>text+hagah</code>?</strong> גרסה זו מכילה את עיקר הטקסט <em>יחד עם</em> הגה של הרמ"א — כך מכוסות גם שיטת ספרד וגם שיטת אשכנז בקטע אחד. גרסת <code>text_only</code> חסרה פסיקות אשכנז; גרסת <code>text+hilchot_group</code> מוסיפה שם נושא אך לא הגה.</span>
+    </div>
+
+    <h3>טעינה עצלה (Lazy Load)</h3>
+    <p>הבנייה (<code>__init__</code>) לא טוענת את המודל. הטעינה האמיתית קורית בקריאה הראשונה ל-<code>retrieve()</code>:</p>
+    <pre>def _load(self):
+    if self._model is not None:
+        return           # כבר טעון
+    self._model = _get_model(self._model_name)   # ~1.5GB RAM
+    client = chromadb.PersistentClient(...)
+    self._collection = client.get_collection(...)</pre>
+    <div class="callout callout-warn">
+      <span class="callout-icon">⚠️</span>
+      <span>הבקשה הראשונה אחרי הפעלת השרת לוקחת כמה שניות (טעינת מודל + פתיחת ChromaDB). כל הבקשות הבאות — מיידיות.</span>
+    </div>
+
+    <h3>זרימת בקשה מלאה — POST /api/chat</h3>
+    <div class="process-card">
+      <div class="process-io">
+        <div class="io-box io-input"><div class="io-label">קלט</div><code>{"messages": [...], "use_rag": true, "top_k": 3}</code></div>
+        <div class="io-box io-output"><div class="io-label">פלט</div><code>{"reply": "...", "chunks": [{siman, seif, score, text}, ...]}</code></div>
+      </div>
+    </div>
+    <pre>1. קריאת JSON (Content-Length)
+2. _clean_messages():
+      MAX_MESSAGES = 12    (חלון הסטוריה)
+      MAX_CONTENT_CHARS = 4000  (לכל הודעה)
+      roles מותרים: "user" / "assistant" בלבד
+3. [use_rag=True] → _retriever.retrieve(last_question, top_k)
+      encode_query("query: " + שאלה) → וקטור 1024-dim
+      ChromaDB cosine similarity → K קטעים מ-text+hagah
+4. בניית system prompt:
+      SYSTEM_PROMPT + "קטעים רלוונטיים:\n" + טקסטים
+5. OpenAI API:
+      model    = env:OPENAI_MODEL  (ברירת מחדל: "gpt-4o-mini")
+      temp     = 0.35
+      max_tok  = 1200
+      messages = [system] + messages מנוקים
+6. return {"reply": "...", "chunks": [...]}</pre>
+
+    <h3>פרמטרי K</h3>
+    <table>
+      <thead><tr><th>מי קובע</th><th>ערך</th></tr></thead>
+      <tbody>
+        <tr><td>ברירת מחדל בקוד</td><td><code>RETRIEVER_TOP_K = 3</code></td></tr>
+        <tr><td>שדה <code>top_k</code> בבקשה</td><td>1–20 (נחתך ב-<code>max(1, min(int(...), 20))</code>)</td></tr>
+        <tr><td>בחירה בממשק (dropdown)</td><td>1, 3, 5, 10</td></tr>
+      </tbody>
+    </table>
+
+    <h3>נתוני הבנצ'מרק — GET /api/eval</h3>
+    <p>הנתיב המוחלט בקוד:</p>
+    <pre>EVAL_CSV = Path(__file__).resolve().parents[2] / "data" / "eval" / "sa_eval.csv"</pre>
+    <p>כלומר: <code>data/eval/sa_eval.csv</code> ביחס לשורש הפרויקט. ~596 שורות, עמודות: <code>#, שאלה, תשובה, סימן, סעיף</code>. ה-handler טוען פעם אחת ומחזיר JSON מ-cache.</p>
+
+    <h3>שלוש הלשוניות — תיאור טכני</h3>
+
+    <h4>לשונית "שאלות מאגר"</h4>
+    <ul>
+      <li>טוענת 596 שאלות מ-<code>/api/eval</code> בעלייה</li>
+      <li>חיפוש חי עם debounce 200ms על שדה שאלה ותשובה</li>
+      <li>PAGE_SIZE = 50 שאלות לעמוד</li>
+      <li>כפתור "השווה" — מעביר ללשונית ההשוואה עם שאלה + תשובה מקורית + סימן צפוי</li>
+    </ul>
+
+    <h4>לשונית "השוואה"</h4>
+    <ul>
+      <li>שולחת <strong>שתי בקשות במקביל</strong> (<code>Promise.allSettled</code>): <code>use_rag=false</code> ו-<code>use_rag=true</code></li>
+      <li>כפתור "צ'אנקים" — modal עם קטעים שנשלפו (סימן, סעיף, ציון cosine)</li>
+      <li>מטריקות Recall@K ו-MRR מחושבות client-side לפי הסימן הצפוי</li>
+      <li>הצבעה: RAG עדיף / ללא RAG עדיף / שווה — נשמרת ב-localStorage</li>
+    </ul>
+
+    <h4>לשונית "סטטיסטיקות"</h4>
+    <ul>
+      <li>localStorage: <code>ragCompareStats</code>, <code>ragSeenRecall</code>, <code>ragSeenVote</code></li>
+      <li>כפילויות מנוטרלות: אותה שאלה לא נספרת פעמיים</li>
+      <li>גרפי עמודה: ספירות הצבעה + Recall@K + MRR ממוצע</li>
+    </ul>
+
+    <h3>משתני סביבה</h3>
+    <table>
+      <thead><tr><th>משתנה</th><th>חובה</th><th>ברירת מחדל</th><th>תיאור</th></tr></thead>
+      <tbody>
+        <tr><td><code>OPENAI_API_KEY</code></td><td>כן</td><td>—</td><td>מפתח API של OpenAI</td></tr>
+        <tr><td><code>OPENAI_MODEL</code></td><td>לא</td><td><code>gpt-4o-mini</code></td><td>שם המודל</td></tr>
+      </tbody>
+    </table>
+
+    <h3>המלצות לשיפור</h3>
+    <table>
+      <thead><tr><th>בעיה</th><th>מצב נוכחי</th><th>פתרון מוצע</th></tr></thead>
+      <tbody>
+        <tr><td>אין streaming</td><td>המשתמש מחכה לכל התשובה</td><td><code>stream=True</code> ב-OpenAI + SSE</td></tr>
+        <tr><td>RAG רק על הודעה אחרונה</td><td>שאלת המשך לא מנצלת הקשר</td><td>concat היסטוריה + שאלה אחרונה לשליפה</td></tr>
+        <tr><td>top_k קשיח ב-UI</td><td>4 אפשרויות בלבד</td><td>slider 1–20</td></tr>
+        <tr><td>type_text קבוע</td><td>תמיד <code>text+hagah</code></td><td>dropdown לבחירת גרסת הטקסט</td></tr>
+        <tr><td>SYSTEM_PROMPT קשיח</td><td>דורש עריכת קוד</td><td>שדה עריכה בממשק</td></tr>
+        <tr><td>MRR ברמת סימן בלבד</td><td>לא מביא בחשבון סעיף</td><td>הרחבת זיהוי גם לסעיף</td></tr>
+        <tr><td>localStorage בלבד</td><td>נתונים אובדים בניקוי</td><td>שמירה ב-backend (SQLite קטן)</td></tr>
+      </tbody>
+    </table>
+  </section>
 
   <footer>
     מסמך זה נוצר ב-11 במאי 2026 על בסיס קריאה מלאה של כל קבצי הפרויקט · rag_shul
