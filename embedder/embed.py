@@ -137,6 +137,9 @@ def get_existing_type_texts(chroma_dir: Path, collection_name: str) -> set[str]:
     """
     Return the set of type_text values already stored in the collection.
     Returns an empty set if the collection does not exist.
+
+    Paginated to stay under SQLite's parameter limit on large collections
+    (a single col.get() over ~80k+ records hits "too many SQL variables").
     """
     client = chromadb.PersistentClient(path=str(chroma_dir))
     existing = [c.name for c in client.list_collections()]
@@ -144,8 +147,17 @@ def get_existing_type_texts(chroma_dir: Path, collection_name: str) -> set[str]:
         return set()
 
     col = client.get_collection(collection_name)
-    result = col.get(include=["metadatas"])
-    return {m["type_text"] for m in result["metadatas"] if "type_text" in m}
+
+    all_variants: set[str] = set()
+    offset, batch = 0, 5000
+    while True:
+        page = col.get(include=["metadatas"], limit=batch, offset=offset)
+        metadatas = page["metadatas"]
+        if not metadatas:
+            break
+        all_variants.update(m["type_text"] for m in metadatas if "type_text" in m)
+        offset += batch
+    return all_variants
 
 
 def store_in_chroma(
@@ -196,7 +208,46 @@ def store_in_chroma(
     print(f"  ChromaDB path: {chroma_dir}")
 
 
-# ─── Entry point ────────────────────────────────────────────────────────────────
+# ─── Programmatic entry point ───────────────────────────────────────────────────
+
+def run(
+    chunks_json: Path,
+    chroma_dir: Path,
+    model: str = DEFAULT_MODEL,
+    collection: str = DEFAULT_COLLECTION,
+    batch_size: int = BATCH_SIZE,
+) -> None:
+    """Embed all tables from chunks_json into ChromaDB. Skips already-embedded variants."""
+    print(f"\n1. Loading tables from {chunks_json.name}...")
+    tables = load_tables(chunks_json)
+
+    print("\n2. Checking existing embeddings in ChromaDB...")
+    already_done = get_existing_type_texts(chroma_dir, collection)
+    tables_to_embed = [(t, c) for t, c in tables if t not in already_done]
+    for t, _ in tables:
+        status = "SKIP (already exists)" if t in already_done else "will embed"
+        print(f"  [{t}]  {status}")
+
+    if not tables_to_embed:
+        print("\nAll tables already embedded. Nothing to do.")
+        return
+
+    print(f"\n3. Loading model: {model}")
+    model_obj = _get_model(model)
+    print(f"   Vector dim: {model_obj.get_sentence_embedding_dimension()}")
+
+    all_tables = []
+    for type_text, chunks in tables_to_embed:
+        print(f"\nEmbedding [{type_text}]...")
+        texts   = build_encoding_texts(chunks)
+        vectors = embed(model_obj, texts, batch_size=batch_size)
+        all_tables.append((type_text, chunks, vectors))
+
+    print("\nStoring in ChromaDB...")
+    store_in_chroma(all_tables, chroma_dir, collection)
+
+
+# ─── CLI entry point ─────────────────────────────────────────────────────────────
 
 def main():
     parser = argparse.ArgumentParser(description="Embed Shulchan Arukh chunks into ChromaDB")
