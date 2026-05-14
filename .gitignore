@@ -139,3 +139,5 @@ dmypy.json
 .cursorignore
 .cursorindexingignore
 .vercel
+PROJECT_GUIDE.html
+PROJECT_GUIDE.md
