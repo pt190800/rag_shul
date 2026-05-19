@@ -36,22 +36,28 @@ Single entry point: `python experiments/exp_main.py`. Each stage self-skips when
 ## Quickstart
 
 ```bash
-# 1. install deps
+# 1. Create and activate a virtual environment
+python3 -m venv .venv
+source .venv/bin/activate
+
+# 2. Install dependencies
 pip install -r requirements.txt
 
-# 2. (chat UI only) set your OpenAI key
+# 3. (chat UI only) set your OpenAI key
 cp chat-ui/.env.example chat-ui/.env
 # edit chat-ui/.env → OPENAI_API_KEY=sk-...
 
-# 3. run the full pipeline (data → chunks → embed → eval).
+# 4. Run the full pipeline (data → chunks → embed → eval).
 #    First run builds ChromaDB (~2 h on CPU; minutes on a GPU runtime).
 #    Subsequent runs skip stages whose outputs already exist.
 python experiments/exp_main.py
 
-# 4. (optional) launch the chat UI locally
-python run_chat.py
+# 5. Launch the chat UI locally
+OPENAI_API_KEY=sk-... python chat-ui/server.py
 # → http://localhost:3000
 ```
+
+> **Note:** Every new terminal session requires `source .venv/bin/activate` before running any Python command.
 
 Re-run a single stage by deleting its output and invoking `exp_main.py` again. Full clean rerun: set `rebuild: true` in `config/config.yaml`. The full recipe table (re-chunk, re-embed, add a new variant, point at a different ChromaDB) lives in [experiments/README.md](experiments/README.md).
 
@@ -110,6 +116,8 @@ rag_shul/
 ## Requirements
 
 ```bash
+python3 -m venv .venv
+source .venv/bin/activate
 pip install -r requirements.txt
 ```
 

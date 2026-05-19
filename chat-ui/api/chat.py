@@ -23,7 +23,12 @@ MAX_MESSAGES = 12
 MAX_CONTENT_CHARS = 4000
 RETRIEVER_TOP_K = 3
 
-_retriever = get_retriever("chroma", type_text="text+hagah")
+_retrievers: dict = {}
+
+def _get_retriever(type_text: str):
+    if type_text not in _retrievers:
+        _retrievers[type_text] = get_retriever("chroma", type_text=type_text)
+    return _retrievers[type_text]
 
 
 class handler(BaseHTTPRequestHandler):
@@ -51,10 +56,18 @@ class handler(BaseHTTPRequestHandler):
             rag_chunks = []
 
             if use_rag:
-                top_k = max(1, min(int(payload.get("top_k", RETRIEVER_TOP_K)), 20))
-                results = _retriever.retrieve(last_question, top_k=top_k)
+                top_k     = max(1, min(int(payload.get("top_k", RETRIEVER_TOP_K)), 20))
+                type_text = payload.get("type_text", "text+hagah")
+                results   = _get_retriever(type_text).retrieve(last_question, top_k=top_k)
                 rag_chunks = [
-                    {"siman": r["siman"], "seif": r["seif"], "text": r["text"], "score": r["score"]}
+                    {
+                        "rank":      r["rank"],
+                        "siman":     r["siman"],
+                        "seif":      r["seif"],
+                        "text":      r["text"],
+                        "score":     r["score"],
+                        "type_text": r["type_text"],
+                    }
                     for r in results
                 ]
                 context = "\n\n".join(

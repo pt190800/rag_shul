@@ -432,6 +432,33 @@
       transition: background 160ms ease, border-color 160ms ease, transform 160ms ease;
     }
     .chunks-btn:hover { background: #e0f2ef; border-color: var(--teal); transform: translateY(-1px); }
+    .inline-chunks { margin-top: 10px; border-top: 1px solid var(--line); }
+    .inline-chunks summary {
+      cursor: pointer;
+      padding: 6px 0;
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--teal-dark);
+      list-style: none;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      user-select: none;
+    }
+    .inline-chunks summary::-webkit-details-marker { display: none; }
+    .inline-chunks summary::before { content: '▶'; font-size: 0.65rem; transition: transform 160ms ease; }
+    .inline-chunks[open] summary::before { transform: rotate(90deg); }
+    .inline-chunk-item {
+      padding: 8px 0;
+      border-bottom: 1px solid var(--line);
+      font-size: 0.82rem;
+    }
+    .inline-chunk-item:last-child { border-bottom: none; }
+    .inline-chunk-meta { display: flex; align-items: center; gap: 6px; margin-bottom: 4px; flex-wrap: wrap; }
+    .inline-chunk-loc { font-weight: 700; color: var(--teal-dark); font-size: 0.76rem; }
+    .inline-chunk-variant { font-size: 0.7rem; color: var(--muted); background: #f0ece4; padding: 1px 7px; border-radius: 999px; }
+    .inline-chunk-score { font-size: 0.7rem; color: var(--muted); }
+    .inline-chunk-text { color: var(--ink-soft); line-height: 1.6; white-space: pre-wrap; }
     .modal-backdrop {
       display: none;
       position: fixed;
@@ -562,6 +589,9 @@
             <option value="5">K=5</option>
             <option value="10">K=10</option>
           </select>
+          <select id="variantSelect" class="top-k-select" title="וואריאנט טקסט">
+            <option value="text+hagah">text+hagah</option>
+          </select>
           <button class="compare-send-btn" id="compareBtn">שלח לשניהם</button>
         </div>
 
@@ -595,6 +625,114 @@
         <div class="tie-row">
           <button class="tie-btn" id="tieBtn" disabled>🤝 שווה</button>
         </div>
+      </section>
+
+      <!-- ── Tab: Batch Run ── -->
+      <section class="tab-panel hidden" id="tab-batch" role="tabpanel">
+        <div class="batch-controls">
+          <button class="batch-start-btn" id="batchStartBtn">▶ הרץ הכל (600 שאלות)</button>
+          <button class="batch-stop-btn" id="batchStopBtn" disabled>⏹ עצור</button>
+          <select id="batchMode" class="top-k-select" style="height:40px" title="מצב הרצה">
+            <option value="rag">RAG בלבד</option>
+            <option value="no_rag">ללא RAG בלבד</option>
+            <option value="both" selected>שניהם (השוואה)</option>
+          </select>
+          <select id="batchTopK" class="top-k-select" style="height:40px" title="מספר קטעים לשליפה">
+            <option value="1">K=1</option>
+            <option value="3" selected>K=3</option>
+            <option value="5">K=5</option>
+            <option value="10">K=10</option>
+          </select>
+          <select id="batchVariantSelect" class="top-k-select" style="height:40px" title="וואריאנט טקסט">
+            <option value="text+hagah">text+hagah</option>
+          </select>
+          <button class="prompt-view-btn" id="viewPromptsBtn" style="margin-right:auto">📝 צפה בפרומפטים</button>
+        </div>
+
+        <!-- ── Progress section ── -->
+        <div class="batch-progress-section hidden" id="batchProgressSection">
+          <div class="batch-prog-header">
+            <span class="batch-prog-label" id="batchProgLabel">מתחיל...</span>
+            <span class="batch-prog-pct" id="batchProgPct">0%</span>
+          </div>
+          <div class="batch-prog-outer">
+            <div class="batch-prog-inner" id="batchProgressBar"></div>
+          </div>
+          <div class="batch-prog-recall-outer">
+            <div class="batch-prog-hits"   id="batchProgHits"></div>
+            <div class="batch-prog-misses" id="batchProgMisses"></div>
+          </div>
+          <div class="batch-prog-footer">
+            <span class="batch-hit-badge"  id="batchProgHitsLabel">✅ 0 hits</span>
+            <span class="batch-miss-badge" id="batchProgMissLabel">❌ 0 misses</span>
+            <span class="batch-prog-count" id="batchProgressText">0 / 0</span>
+          </div>
+          <div id="batchBleuCompareLine" style="display:none;margin-top:10px;padding-top:10px;border-top:1px solid var(--line);display:none;gap:18px;font-size:0.84rem;align-items:center;flex-wrap:wrap">
+            <span style="font-weight:700;color:var(--ink-soft)">BLEU השוואה:</span>
+            <span id="batchBleuRagLive" style="color:var(--teal);font-weight:700">RAG: —</span>
+            <span style="color:var(--muted)">vs</span>
+            <span id="batchBleuNoRagLive" style="color:var(--gold);font-weight:700">ללא RAG: —</span>
+            <span id="batchBleuWinnerLive" style="font-weight:700"></span>
+          </div>
+        </div>
+
+        <div class="batch-summary hidden" id="batchSummary">
+          <div class="batch-stat-card">
+            <div class="batch-stat-num" id="batchStatTotal">0</div>
+            <div class="batch-stat-label">שאלות רצו</div>
+          </div>
+          <div class="batch-stat-card">
+            <div class="batch-stat-num" id="batchStatHits">0</div>
+            <div class="batch-stat-label">Recall hits</div>
+          </div>
+          <div class="batch-stat-card">
+            <div class="batch-stat-num miss" id="batchStatMisses">0</div>
+            <div class="batch-stat-label">Recall misses</div>
+          </div>
+          <div class="batch-stat-card">
+            <div class="batch-stat-num" id="batchStatRecall">—</div>
+            <div class="batch-stat-label">Recall@K</div>
+          </div>
+          <div class="batch-stat-card">
+            <div class="batch-stat-num" id="batchStatMRR">—</div>
+            <div class="batch-stat-label">MRR</div>
+          </div>
+          <div class="batch-stat-card">
+            <div class="batch-stat-num" id="batchStatBleu">—</div>
+            <div class="batch-stat-label">BLEU-1 (RAG)</div>
+          </div>
+          <div class="batch-stat-card" id="batchStatBleuNoRagCard" style="display:none">
+            <div class="batch-stat-num" id="batchStatBleuNoRag">—</div>
+            <div class="batch-stat-label">BLEU-1 (ללא RAG)</div>
+          </div>
+        </div>
+
+        <div class="batch-filter-row" id="batchFilterRow" style="display:none">
+          <button class="batch-filter-btn active" data-filter="all">הכל</button>
+          <button class="batch-filter-btn" data-filter="hit">✅ נמצאו</button>
+          <button class="batch-filter-btn" data-filter="miss">❌ לא נמצאו</button>
+          <button class="batch-export-btn" id="batchExportBtn">⬇ ייצוא JSON</button>
+        </div>
+
+        <div id="batchTableWrap">
+          <div class="batch-empty" id="batchEmpty">לחץ "הרץ הכל" כדי להריץ את כל 600 השאלות מול ה-RAG<br>ולבדוק אוטומטית האם הסימן הנכון נשלף (Recall@K)</div>
+          <table class="batch-results-table" id="batchTable" style="display:none">
+            <thead>
+              <tr id="batchTableHead">
+                <th>#</th>
+                <th>שאלה</th>
+                <th>סימן/סעיף</th>
+                <th>Recall</th>
+                <th>דרגה</th>
+                <th>BLEU-RAG</th>
+                <th>תשובת הדאטה</th>
+                <th>תשובת RAG</th>
+              </tr>
+            </thead>
+            <tbody id="batchTableBody"></tbody>
+          </table>
+        </div>
+        <div class="pagination" id="batchPagination"></div>
       </section>
 
       <!-- ── Tab: Stats ── -->
@@ -777,11 +915,12 @@
         origBox.classList.add('hidden');
       }
 
-      const topK = parseInt((document.getElementById('topKSelect') || { value: '3' }).value) || 3;
+      const topK     = parseInt((document.getElementById('topKSelect')  || { value: '3' }).value) || 3;
+      const typeText = (document.getElementById('variantSelect') || { value: 'text+hagah' }).value;
 
       const [r1, r2] = await Promise.allSettled([
-        fetchAnswer(question, false, topK),
-        fetchAnswer(question, true, topK),
+        fetchAnswer(question, false, topK, typeText),
+        fetchAnswer(question, true,  topK, typeText),
       ]);
 
       setAnswer('answer-no-rag', r1, false);
@@ -796,14 +935,15 @@
       document.getElementById('compareBtn').disabled = false;
     }
 
-    async function fetchAnswer(question, useRag, topK) {
+    async function fetchAnswer(question, useRag, topK, typeText) {
       const res = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          messages: [{ role: 'user', content: question }],
-          use_rag: useRag,
-          top_k: useRag ? (topK || 3) : 3,
+          messages:  [{ role: 'user', content: question }],
+          use_rag:   useRag,
+          top_k:     useRag ? (topK || 3) : 3,
+          type_text: typeText || 'text+hagah',
         }),
       });
       const data = await res.json().catch(function() { return {}; });
@@ -815,15 +955,26 @@
       const el = document.getElementById(id);
       if (result.status === 'fulfilled') {
         const data = result.value;
-        el.innerHTML = '<div class="answer-text">' + esc(data.reply || 'לא התקבלה תשובה.') + '</div>';
+        var html = '<div class="answer-text">' + esc(data.reply || 'לא התקבלה תשובה.') + '</div>';
         if (showChunks && data.chunks && data.chunks.length) {
-          const btn = document.createElement('button');
-          btn.className = 'chunks-btn';
-          btn.textContent = '📄 צ\'אנקים שנשלפו (' + data.chunks.length + ')';
-          const chunks = data.chunks;
-          btn.addEventListener('click', function() { showChunksModal(chunks); });
-          el.appendChild(btn);
+          var items = data.chunks.map(function(c, i) {
+            var rankLabel = c.rank != null ? '#' + c.rank : (i + 1);
+            var variant   = c.type_text ? '<span class="inline-chunk-variant">' + esc(c.type_text) + '</span>' : '';
+            return '<div class="inline-chunk-item">' +
+              '<div class="inline-chunk-meta">' +
+                '<span class="inline-chunk-loc">' + rankLabel + '. סימן ' + esc(String(c.siman)) + ' · סעיף ' + esc(String(c.seif)) + '</span>' +
+                variant +
+                '<span class="inline-chunk-score">ציון ' + c.score + '</span>' +
+              '</div>' +
+              '<div class="inline-chunk-text">' + esc(c.text) + '</div>' +
+            '</div>';
+          }).join('');
+          html += '<details class="inline-chunks">' +
+            '<summary>📄 קטעים שנשלפו (' + data.chunks.length + ')</summary>' +
+            items +
+          '</details>';
         }
+        el.innerHTML = html;
       } else {
         el.innerHTML = '<span class="error-inline">שגיאה: ' + esc(result.reason && result.reason.message || 'לא ידוע') + '</span>';
       }
@@ -971,10 +1122,14 @@
     // ── Chunks modal ──
     function showChunksModal(chunks) {
       document.getElementById('chunksContent').innerHTML = chunks.map(function(c, i) {
+        var rankLabel = c.rank != null ? '#' + c.rank : (i + 1);
+        var variant   = c.type_text
+          ? '<span style="font-size:0.72rem;color:var(--muted);background:#f0ece4;padding:2px 8px;border-radius:999px">' + esc(c.type_text) + '</span>'
+          : '';
         return '<div class="chunk-card">' +
           '<div class="chunk-meta">' +
-            '<span class="chunk-location">' + (i + 1) + '. סימן ' + esc(String(c.siman)) + ' &bull; סעיף ' + esc(String(c.seif)) + '</span>' +
-            '<span class="chunk-score">ציון ' + c.score + '</span>' +
+            '<span class="chunk-location">' + rankLabel + '. סימן ' + esc(String(c.siman)) + ' &bull; סעיף ' + esc(String(c.seif)) + '</span>' +
+            '<span style="display:flex;align-items:center;gap:6px">' + variant + '<span class="chunk-score">ציון ' + c.score + '</span></span>' +
           '</div>' +
           '<div class="chunk-text">' + esc(c.text) + '</div>' +
         '</div>';
@@ -992,6 +1147,403 @@
       if (e.key === 'Escape') document.getElementById('chunksModal').classList.remove('open');
     });
 
+    // ── BLEU-1 ──
+    function bleu1(reference, hypothesis) {
+      if (!reference || !hypothesis) return 0;
+      var ref = reference.trim().split(/\s+/);
+      var hyp = hypothesis.trim().split(/\s+/);
+      if (hyp.length === 0 || ref.length === 0) return 0;
+      var refCounts = {};
+      ref.forEach(function(w) { refCounts[w] = (refCounts[w] || 0) + 1; });
+      var hypCounts = {};
+      hyp.forEach(function(w) { hypCounts[w] = (hypCounts[w] || 0) + 1; });
+      var matches = 0;
+      Object.keys(hypCounts).forEach(function(w) {
+        if (refCounts[w]) matches += Math.min(hypCounts[w], refCounts[w]);
+      });
+      var precision = matches / hyp.length;
+      var bp = hyp.length >= ref.length ? 1 : Math.exp(1 - ref.length / hyp.length);
+      return Math.round(bp * precision * 100) / 100;
+    }
+
+    // ── Batch Run ──
+    let batchRunning = false;
+    let batchAbort = false;
+    let batchResults = [];
+    let batchFilter = 'all';
+    let batchPageNum = 1;
+    let batchCurrentMode = 'both';
+    const BATCH_PAGE_SIZE = 25;
+    const BATCH_CONCURRENCY = 5;
+
+    // ── Batch history ──
+    var batchHistory = [];
+    function loadBatchHistory() {
+      try { batchHistory = JSON.parse(localStorage.getItem('ragBatchHistory') || '[]'); } catch { batchHistory = []; }
+    }
+    function saveBatchHistory() {
+      localStorage.setItem('ragBatchHistory', JSON.stringify(batchHistory.slice(-20)));
+    }
+    function renderBatchHistory() {
+      var el = document.getElementById('batchHistoryList');
+      if (!batchHistory.length) { el.innerHTML = '<div class="stats-empty">אין עדיין הרצות שמורות</div>'; return; }
+      var rows = batchHistory.slice().reverse().map(function(h) {
+        var isBoth = h.bleu_rag !== null && h.bleu_no_rag !== null;
+        var ragNum    = parseFloat(h.bleu_rag);
+        var noRagNum  = parseFloat(h.bleu_no_rag);
+        var diff      = isBoth ? (ragNum - noRagNum) : 0;
+        var winner    = !isBoth ? null : Math.abs(diff) < 0.001 ? 'tie' : diff > 0 ? 'rag' : 'no_rag';
+
+        function bleuCell(val, isWinner) {
+          if (val === null) return '<td style="color:var(--muted)">—</td>';
+          var style = isWinner
+            ? 'font-weight:700;color:var(--teal)'
+            : (isBoth ? 'color:var(--rose)' : '');
+          return '<td style="' + style + '">' + val + '</td>';
+        }
+
+        var winnerCell = !isBoth ? '<td style="color:var(--muted)">—</td>'
+          : winner === 'tie'    ? '<td style="color:var(--muted)">🤝 שווה</td>'
+          : winner === 'rag'    ? '<td style="color:var(--teal);font-weight:700">✅ RAG (+' + Math.abs(diff).toFixed(3) + ')</td>'
+          :                       '<td style="color:var(--gold);font-weight:700">✅ ללא RAG (+' + Math.abs(diff).toFixed(3) + ')</td>';
+
+        var promptSnippet = h.prompt_no_rag
+          ? '<td style="max-width:160px;font-size:0.76rem;color:var(--muted)" title="' + escAttr((h.prompt_no_rag||'') + '\n---\n' + (h.prompt_rag||'')) + '">' +
+              esc((h.prompt_no_rag || '').slice(0, 30)) + '…</td>'
+          : '<td style="color:var(--muted)">—</td>';
+
+        return '<tr>' +
+          '<td style="white-space:nowrap">' + esc(h.date) + '</td>' +
+          '<td>' + esc(h.mode) + '</td>' +
+          '<td>' + esc(String(h.total)) + '</td>' +
+          '<td>' + (h.recall !== null ? h.recall + '%' : '—') + '</td>' +
+          '<td>' + (h.mrr !== null ? h.mrr : '—') + '</td>' +
+          bleuCell(h.bleu_rag,    winner === 'rag') +
+          bleuCell(h.bleu_no_rag, winner === 'no_rag') +
+          winnerCell +
+          '<td>' + esc(String(h.k || '—')) + '</td>' +
+          '<td style="font-size:0.76rem;color:var(--muted)">' + esc(h.variant || '—') + '</td>' +
+          promptSnippet +
+        '</tr>';
+      }).join('');
+      el.innerHTML = '<table class="batch-history-table"><thead><tr>' +
+        '<th>תאריך</th><th>מצב</th><th>שאלות</th><th>Recall@K</th><th>MRR</th>' +
+        '<th>BLEU — RAG</th><th>BLEU — ללא RAG</th><th>ניצח</th><th>K</th><th>וואריאנט</th><th>פרומפט (hover)</th>' +
+        '</tr></thead><tbody>' + rows + '</tbody></table>';
+    }
+    document.getElementById('clearBatchHistory').addEventListener('click', function() {
+      if (!confirm('למחוק את כל היסטוריית ההרצות?')) return;
+      batchHistory = [];
+      saveBatchHistory();
+      renderBatchHistory();
+    });
+
+    function batchFilteredResults() {
+      if (batchFilter === 'hit')  return batchResults.filter(function(r) { return r.recall_hit; });
+      if (batchFilter === 'miss') return batchResults.filter(function(r) { return !r.recall_hit; });
+      return batchResults;
+    }
+
+    function renderBatchSummary() {
+      const done = batchResults.length;
+      if (done === 0) { document.getElementById('batchSummary').classList.add('hidden'); return; }
+      document.getElementById('batchSummary').classList.remove('hidden');
+      const hits    = batchResults.filter(function(r) { return r.recall_hit; }).length;
+      const mrr     = batchResults.reduce(function(s, r) { return s + (r.rank ? 1 / r.rank : 0); }, 0) / done;
+      const avgBleu = batchResults.reduce(function(s, r) { return s + (r.bleu || 0); }, 0) / done;
+      const hasBoth = batchCurrentMode === 'both';
+      const avgBleuNoRag = hasBoth
+        ? batchResults.reduce(function(s, r) { return s + (r.bleu_no_rag || 0); }, 0) / done
+        : null;
+      const showRecall = batchCurrentMode !== 'no_rag';
+      document.getElementById('batchStatTotal').textContent    = done;
+      document.getElementById('batchStatHits').textContent     = showRecall ? hits : '—';
+      document.getElementById('batchStatMisses').textContent   = showRecall ? (done - hits) : '—';
+      document.getElementById('batchStatRecall').textContent   = showRecall ? Math.round(hits / done * 100) + '%' : '—';
+      document.getElementById('batchStatMRR').textContent      = showRecall ? mrr.toFixed(3) : '—';
+      document.getElementById('batchStatBleu').textContent     = avgBleu.toFixed(3);
+      document.getElementById('batchStatBleuNoRagCard').style.display = hasBoth ? '' : 'none';
+      if (hasBoth) document.getElementById('batchStatBleuNoRag').textContent = avgBleuNoRag.toFixed(3);
+    }
+
+    function renderBatchTable() {
+      const filtered = batchFilteredResults();
+      const start    = (batchPageNum - 1) * BATCH_PAGE_SIZE;
+      const page     = filtered.slice(start, start + BATCH_PAGE_SIZE);
+      const tbody    = document.getElementById('batchTableBody');
+      const table    = document.getElementById('batchTable');
+      const empty    = document.getElementById('batchEmpty');
+
+      if (batchResults.length === 0) {
+        empty.style.display = '';
+        table.style.display = 'none';
+        document.getElementById('batchFilterRow').style.display = 'none';
+        return;
+      }
+      empty.style.display = 'none';
+      table.style.display = '';
+      document.getElementById('batchFilterRow').style.display = '';
+
+      const hasBoth   = batchCurrentMode === 'both';
+      const showRecall = batchCurrentMode !== 'no_rag';
+      tbody.innerHTML = page.map(function(r, i) {
+        const rowClass = showRecall ? (r.recall_hit ? 'batch-row-hit' : 'batch-row-miss') : '';
+        const badge    = !showRecall ? '—'
+          : r.error
+            ? '<span class="batch-miss-badge">שגיאה</span>'
+            : r.recall_hit
+              ? '<span class="batch-hit-badge">✅</span>'
+              : '<span class="batch-miss-badge">❌</span>';
+        const rank = r.rank ? '#' + r.rank : '—';
+        function bleuCell(val) {
+          if (typeof val !== 'number') return '<td>—</td>';
+          var color = val === 0 ? 'color:var(--rose)' : val >= 0.5 ? 'color:var(--teal);font-weight:700' : 'color:var(--gold)';
+          return '<td style="' + color + ';white-space:nowrap">' + val.toFixed(2) + '</td>';
+        }
+        return '<tr class="' + rowClass + '">' +
+          '<td>' + esc(String(start + i + 1)) + '</td>' +
+          '<td style="max-width:160px">' + esc(r.question) + '</td>' +
+          '<td style="white-space:nowrap">' + esc(String(r.siman)) + '/' + esc(String(r.seif)) + '</td>' +
+          '<td>' + badge + '</td>' +
+          '<td>' + esc(rank) + '</td>' +
+          bleuCell(r.bleu) +
+          (hasBoth ? bleuCell(r.bleu_no_rag) : '') +
+          '<td style="max-width:130px;color:var(--ink-soft)">' + esc(r.expected_answer || '') + '</td>' +
+          '<td style="max-width:160px">' + esc(r.model_answer || (r.error ? 'שגיאה: ' + r.error : '...')) + '</td>' +
+          (hasBoth ? '<td style="max-width:160px;color:var(--muted)">' + esc(r.model_answer_no_rag || '...') + '</td>' : '') +
+        '</tr>';
+      }).join('');
+
+      renderBatchPagination(filtered.length);
+    }
+
+    function renderBatchPagination(total) {
+      const pages = Math.ceil(total / BATCH_PAGE_SIZE);
+      const pag   = document.getElementById('batchPagination');
+      if (pages <= 1) { pag.innerHTML = ''; return; }
+      pag.innerHTML =
+        '<button class="pag-btn" id="batchPrev"' + (batchPageNum === 1     ? ' disabled' : '') + '>&lsaquo; הקודם</button>' +
+        '<span class="pag-info">' + batchPageNum + ' / ' + pages + '</span>' +
+        '<button class="pag-btn" id="batchNext"' + (batchPageNum === pages ? ' disabled' : '') + '>הבא &rsaquo;</button>';
+      const prev = document.getElementById('batchPrev');
+      const next = document.getElementById('batchNext');
+      if (prev) prev.addEventListener('click', function() { batchPageNum--; renderBatchTable(); document.getElementById('tab-batch').scrollTop = 0; });
+      if (next) next.addEventListener('click', function() { batchPageNum++; renderBatchTable(); document.getElementById('tab-batch').scrollTop = 0; });
+    }
+
+    function updateBatchTableHeaders() {
+      var hasBoth = batchCurrentMode === 'both';
+      var showRecall = batchCurrentMode !== 'no_rag';
+      var head = document.getElementById('batchTableHead');
+      if (!head) return;
+      head.innerHTML =
+        '<th>#</th>' +
+        '<th>שאלה</th>' +
+        '<th>סימן/סעיף</th>' +
+        '<th>' + (showRecall ? 'Recall' : '—') + '</th>' +
+        '<th>' + (showRecall ? 'דרגה' : '—') + '</th>' +
+        '<th>BLEU' + (hasBoth ? '-RAG' : (batchCurrentMode === 'no_rag' ? '-ללא RAG' : '')) + '</th>' +
+        (hasBoth ? '<th>BLEU-ללא RAG</th>' : '') +
+        '<th>תשובת הדאטה</th>' +
+        '<th>' + (batchCurrentMode === 'no_rag' ? 'תשובת ללא RAG' : 'תשובת RAG') + '</th>' +
+        (hasBoth ? '<th>תשובת ללא RAG</th>' : '');
+    }
+
+    async function runBatch() {
+      if (batchRunning) return;
+      if (!evalData.length) { alert('השאלות עוד לא נטענו, נסה שוב עוד רגע'); return; }
+
+      batchCurrentMode = document.getElementById('batchMode').value;
+      batchRunning = true;
+      batchAbort   = false;
+      batchResults = [];
+      batchPageNum = 1;
+      updateBatchTableHeaders();
+
+      const startBtn = document.getElementById('batchStartBtn');
+      const stopBtn  = document.getElementById('batchStopBtn');
+      startBtn.disabled = true;
+      stopBtn.disabled  = false;
+
+      const topK      = parseInt(document.getElementById('batchTopK').value) || 3;
+      const batchVariant = document.getElementById('batchVariantSelect').value || 'text+hagah';
+      const runRag    = batchCurrentMode !== 'no_rag';
+      const runNoRag  = batchCurrentMode !== 'rag';
+      const questions = evalData;
+      const total     = questions.length;
+      let completed   = 0;
+
+      var progSection = document.getElementById('batchProgressSection');
+      progSection.classList.remove('hidden');
+      document.getElementById('batchProgressBar').style.width  = '0%';
+      document.getElementById('batchProgHits').style.width     = '0%';
+      document.getElementById('batchProgMisses').style.width   = '0%';
+      document.getElementById('batchProgressText').textContent = '0 / ' + total;
+      document.getElementById('batchProgPct').textContent      = '0%';
+      document.getElementById('batchProgLabel').textContent    = 'מריץ שאלות...';
+      document.getElementById('batchProgHitsLabel').textContent = '✅ 0 hits';
+      document.getElementById('batchProgMissLabel').textContent = '❌ 0 misses';
+      var bleuLine = document.getElementById('batchBleuCompareLine');
+      bleuLine.style.display = (batchCurrentMode === 'both') ? 'flex' : 'none';
+      document.getElementById('batchBleuRagLive').textContent   = 'RAG: —';
+      document.getElementById('batchBleuNoRagLive').textContent = 'ללא RAG: —';
+      document.getElementById('batchBleuWinnerLive').textContent = '';
+
+      function updateProgress() {
+        const pct    = Math.round(completed / total * 100);
+        const hits   = batchResults.filter(function(r) { return r.recall_hit; }).length;
+        const done   = batchResults.length;
+        const misses = done - hits;
+        document.getElementById('batchProgressBar').style.width  = pct + '%';
+        document.getElementById('batchProgressText').textContent = completed + ' / ' + total;
+        document.getElementById('batchProgPct').textContent      = pct + '%';
+        document.getElementById('batchProgLabel').textContent    = batchAbort
+          ? 'עצר ב-' + done + ' שאלות'
+          : 'מריץ שאלות... (' + done + '/' + total + ')';
+        if (done > 0) {
+          const hitsPct   = Math.round(hits   / total * 100);
+          const missesPct = Math.round(misses / total * 100);
+          document.getElementById('batchProgHits').style.width   = hitsPct + '%';
+          document.getElementById('batchProgMisses').style.width = missesPct + '%';
+          document.getElementById('batchProgHitsLabel').textContent = '✅ ' + hits + ' hits (' + Math.round(hits/done*100) + '%)';
+          document.getElementById('batchProgMissLabel').textContent = '❌ ' + misses + ' misses';
+
+          if (batchCurrentMode === 'both') {
+            var avgRag   = batchResults.reduce(function(s,r){return s+(r.bleu||0);},0) / done;
+            var avgNoRag = batchResults.reduce(function(s,r){return s+(r.bleu_no_rag||0);},0) / done;
+            var diff     = avgRag - avgNoRag;
+            document.getElementById('batchBleuRagLive').textContent   = 'RAG: ' + avgRag.toFixed(3);
+            document.getElementById('batchBleuNoRagLive').textContent = 'ללא RAG: ' + avgNoRag.toFixed(3);
+            var winEl = document.getElementById('batchBleuWinnerLive');
+            if (Math.abs(diff) < 0.001) {
+              winEl.textContent = '🤝 שווה';
+              winEl.style.color = 'var(--muted)';
+            } else if (diff > 0) {
+              winEl.textContent = '→ RAG עדיף (+' + diff.toFixed(3) + ')';
+              winEl.style.color = 'var(--teal)';
+            } else {
+              winEl.textContent = '→ ללא RAG עדיף (+' + Math.abs(diff).toFixed(3) + ')';
+              winEl.style.color = 'var(--gold)';
+            }
+          }
+        }
+      }
+
+      for (var i = 0; i < total && !batchAbort; i += BATCH_CONCURRENCY) {
+        var batch = questions.slice(i, i + BATCH_CONCURRENCY);
+        await Promise.all(batch.map(async function(q) {
+          try {
+            var calls = [];
+            if (runRag)   calls.push(fetchAnswer(q.question, true,  topK, batchVariant));
+            if (runNoRag) calls.push(fetchAnswer(q.question, false, topK, batchVariant));
+            var settled = await Promise.allSettled(calls);
+            var ragRes    = runRag   ? settled[0] : null;
+            var noRagRes  = runNoRag ? settled[runRag ? 1 : 0] : null;
+
+            var ragReply    = (ragRes   && ragRes.status   === 'fulfilled') ? (ragRes.value.reply   || '') : null;
+            var noRagReply  = (noRagRes && noRagRes.status === 'fulfilled') ? (noRagRes.value.reply || '') : null;
+            var chunks = (ragRes && ragRes.status === 'fulfilled') ? (ragRes.value.chunks || []) : [];
+
+            var expectedSiman = parseInt(q.siman);
+            var rankIdx  = chunks.findIndex(function(c) { return parseInt(c.siman) === expectedSiman; });
+            var recallHit = runRag && rankIdx >= 0;
+
+            batchResults.push({
+              question:           q.question,
+              expected_answer:    q.answer,
+              model_answer:       ragReply !== null ? ragReply : (noRagReply || ''),
+              model_answer_no_rag: noRagReply,
+              siman:              q.siman,
+              seif:               q.seif,
+              recall_hit:         recallHit,
+              rank:               recallHit ? rankIdx + 1 : null,
+              bleu:               bleu1(q.answer, ragReply !== null ? ragReply : (noRagReply || '')),
+              bleu_no_rag:        noRagReply !== null ? bleu1(q.answer, noRagReply) : null,
+            });
+          } catch (e) {
+            batchResults.push({
+              question: q.question, expected_answer: q.answer,
+              model_answer: null, model_answer_no_rag: null,
+              siman: q.siman, seif: q.seif,
+              recall_hit: false, rank: null, bleu: 0, bleu_no_rag: null,
+              error: e.message,
+            });
+          }
+          completed++;
+          updateProgress();
+        }));
+        renderBatchSummary();
+        renderBatchTable();
+      }
+
+      batchRunning = false;
+      startBtn.disabled = false;
+      stopBtn.disabled  = true;
+      const doneCount  = batchResults.length;
+      const hitsCount  = batchResults.filter(function(r) { return r.recall_hit; }).length;
+      const runRagFinal   = batchCurrentMode !== 'no_rag';
+      const runBothFinal  = batchCurrentMode === 'both';
+      const avgBleuFinal  = doneCount ? (batchResults.reduce(function(s,r){return s+(r.bleu||0);},0)/doneCount) : 0;
+      const avgBleuNoRag  = (runBothFinal && doneCount)
+        ? (batchResults.reduce(function(s,r){return s+(r.bleu_no_rag||0);},0)/doneCount) : null;
+      document.getElementById('batchProgLabel').textContent =
+        batchAbort ? 'עצר ב-' + doneCount + ' שאלות' : 'הסתיים — ' + doneCount + ' שאלות';
+      document.getElementById('batchProgressBar').style.width = '100%';
+      document.getElementById('batchProgPct').textContent = runRagFinal
+        ? Math.round(hitsCount / doneCount * 100) + '% Recall'
+        : avgBleuFinal.toFixed(2) + ' BLEU';
+
+      // שמירת היסטוריה
+      var modeLabel = batchCurrentMode === 'rag' ? 'RAG בלבד' : batchCurrentMode === 'no_rag' ? 'ללא RAG' : 'שניהם';
+      batchHistory.push({
+        date:        new Date().toLocaleString('he-IL'),
+        mode:        modeLabel,
+        total:       doneCount,
+        k:           parseInt(document.getElementById('batchTopK').value) || 3,
+        variant:     batchVariant,
+        recall:      runRagFinal && doneCount ? Math.round(hitsCount / doneCount * 100) : null,
+        mrr:         runRagFinal && doneCount
+          ? (batchResults.reduce(function(s,r){return s+(r.rank?1/r.rank:0);},0)/doneCount).toFixed(3)
+          : null,
+        bleu_rag:    doneCount ? avgBleuFinal.toFixed(3) : null,
+        bleu_no_rag: avgBleuNoRag !== null ? avgBleuNoRag.toFixed(3) : null,
+        stopped:      batchAbort,
+        prompt_no_rag: currentPrompts.no_rag || null,
+        prompt_rag:    currentPrompts.rag    || null,
+      });
+      saveBatchHistory();
+
+      renderBatchSummary();
+      renderBatchTable();
+    }
+
+    document.getElementById('batchStartBtn').addEventListener('click', runBatch);
+    document.getElementById('batchStopBtn').addEventListener('click', function() {
+      batchAbort = true;
+      document.getElementById('batchStopBtn').disabled = true;
+    });
+
+    document.querySelectorAll('.batch-filter-btn').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        document.querySelectorAll('.batch-filter-btn').forEach(function(b) { b.classList.remove('active'); });
+        btn.classList.add('active');
+        batchFilter  = btn.dataset.filter;
+        batchPageNum = 1;
+        renderBatchTable();
+      });
+    });
+
+    document.getElementById('batchExportBtn').addEventListener('click', function() {
+      var data = JSON.stringify(batchResults, null, 2);
+      var blob = new Blob([data], { type: 'application/json' });
+      var url  = URL.createObjectURL(blob);
+      var a    = document.createElement('a');
+      a.href     = url;
+      a.download = 'batch_eval_results.json';
+      a.click();
+      URL.revokeObjectURL(url);
+    });
+
     // ── Init ──
     document.getElementById('evalList').addEventListener('click', function(e) {
       const btn = e.target.closest('.eval-compare-btn');
@@ -1004,6 +1556,21 @@
     loadStats();
     loadSeen();
     loadEval();
+    loadVariants();
+
+    async function loadVariants() {
+      try {
+        const res  = await fetch('/api/variants');
+        if (!res.ok) return;
+        const data = await res.json();
+        if (!data.variants || !data.variants.length) return;
+        var opts = data.variants.map(function(v) {
+          return '<option value="' + v + '"' + (v === 'text+hagah' ? ' selected' : '') + '>' + v + '</option>';
+        }).join('');
+        document.getElementById('variantSelect').innerHTML      = opts;
+        document.getElementById('batchVariantSelect').innerHTML = opts;
+      } catch (_) {}
+    }
   </script>
 </body>
 </html>

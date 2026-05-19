@@ -29,6 +29,8 @@ sys.path.insert(0, str(HERE.parent))
 
 from api.chat import handler as ChatHandler
 from api.eval import handler as EvalHandler
+from api.prompts import handler as PromptsHandler
+from api.variants import handler as VariantsHandler
 
 
 class LocalHandler(ChatHandler, SimpleHTTPRequestHandler):
@@ -44,8 +46,13 @@ class LocalHandler(ChatHandler, SimpleHTTPRequestHandler):
             super().do_OPTIONS()
 
     def do_GET(self):
-        if self.path.split("?")[0] == "/api/eval":
+        path = self.path.split("?")[0]
+        if path == "/api/eval":
             EvalHandler.do_GET(self)
+        elif path == "/api/prompts":
+            PromptsHandler.do_GET(self)
+        elif path == "/api/variants":
+            VariantsHandler.do_GET(self)
         else:
             super().do_GET()
 
